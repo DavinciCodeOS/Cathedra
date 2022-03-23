@@ -44,7 +44,7 @@ cp /build/local_manifest.xml .repo/local_manifests/
 
 echo "[i] Fetching sources, hang tight... This might take a while."
 # when pulling sources with more than 16 threads, 429 errors occur often, 16 seems to be fine
-repo sync -c --jobs-network=$(( $THREAD_COUNT < 16 ? $THREAD_COUNT : 16 )) -j --jobs-checkout=$THREAD_COUNT --force-sync --no-clone-bundle --no-tags
+repo sync -c --jobs-network=$(( $THREAD_COUNT < 16 ? $THREAD_COUNT : 16 )) -j$THREAD_COUNT --jobs-checkout=$THREAD_COUNT --force-sync --no-clone-bundle --no-tags
 
 echo "[i] Cloning is done. Patching sources..."
 
