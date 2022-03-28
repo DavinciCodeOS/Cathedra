@@ -2,8 +2,8 @@
 
 set -e
 
-BUILD_PATH=$(find /build/android/out/target/product/davinci/ -name "PixelExperience_davinci-*.zip" | head -n1)
-BUILD_CHECKSUM_PATH=$(find /build/android/out/target/product/davinci/ -name "PixelExperience_davinci-*.zip.sha256sum" | head -n1)
+BUILD_PATH=$(find /build/android/out/target/product/davinci/ -maxdepth 1 -name "DavinciCodeOS_davinci-*.zip" | head -n1)
+BUILD_CHECKSUM_PATH=$(find /build/android/out/target/product/davinci/ -maxdepth 1 -name "DavinciCodeOS_davinci-*.zip.sha256sum" | head -n1)
 
 if [ ! -f "$BUILD_PATH" ] || [ ! -f "$BUILD_CHECKSUM_PATH" ]; then
     echo "[e] Build wasn't successful. Discarding upload..."
