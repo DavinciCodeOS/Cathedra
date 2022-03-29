@@ -1,0 +1,44 @@
+From 66f5c9dc50b2fbe769f915afc69f12e62331a5e9 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Tue, 29 Mar 2022 23:49:22 +0300
+Subject: [PATCH 1/1] Settings: Volume key music control [2/2]
+
+Change-Id: Ic67fab01c1f0485bdc5dd4c65b56ce61b4ff8db6
+---
+ res/values/davinci_strings.xml | 4 ++++
+ res/xml/gestures.xml           | 6 ++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/res/values/davinci_strings.xml b/res/values/davinci_strings.xml
+index 8c46ace39b..e60a930bbe 100644
+--- a/res/values/davinci_strings.xml
++++ b/res/values/davinci_strings.xml
+@@ -16,4 +16,8 @@
+     <!-- Three-fingers-swipe to screenshot -->
+     <string name="three_finger_gesture">Swipe to screenshot</string>
+     <string name="three_finger_gesture_summary">Swipe down with three fingers to take a screenshot</string>
++
++    <!-- Volume rocker music control -->
++    <string name="volume_button_music_control_title">Playback control</string>
++    <string name="volume_button_music_control_summary">When the screen is off, long-pressing the volume keys will skip music tracks</string>
+ </resources>
+diff --git a/res/xml/gestures.xml b/res/xml/gestures.xml
+index 07b1d0a490..d24ee8f313 100644
+--- a/res/xml/gestures.xml
++++ b/res/xml/gestures.xml
+@@ -93,6 +93,12 @@
+         android:fragment="com.android.settings.gestures.SwipeToScreenshotGestureSettings"
+         settings:controller="com.android.settings.gestures.SwipeToScreenshotPreferenceController" />
+ 
++    <com.android.settings.custom.preference.SystemSettingSwitchPreference
++        android:key="volume_button_music_control"
++        android:title="@string/volume_button_music_control_title"
++        android:summary="@string/volume_button_music_control_summary"
++        android:defaultValue="false"/>
++
+     <com.android.settings.widget.PrimarySwitchPreference
+         android:key="gesture_prevent_ringing_summary"
+         android:title="@string/gesture_prevent_ringing_screen_title"
+-- 
+2.35.1
+
