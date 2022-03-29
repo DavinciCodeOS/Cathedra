@@ -59,6 +59,11 @@ echo "[i] Applying 0002-vendor-davincicodeos-rebrand.patch"
 patch -p1 < /build/patches/0002-vendor-davincicodeos-rebrand.patch
 cd /build/android
 
+cd frameworks/base
+echo "[i] Applying 0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch"
+patch -p1 < /build/patches/0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch
+cd /build/android
+
 cd kernel/xiaomi/sm6150
 echo "[i] Obtaining latest wireguard sources for kernel..."
 bash scripts/fetch-latest-wireguard.sh
