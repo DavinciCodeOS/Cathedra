@@ -54,7 +54,7 @@ echo "[i] Applying 0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch"
 patch -p1 < /build/patches/0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch
 cd /build/android
 
-cd vendor/aosp/config
+cd vendor/aosp
 echo "[i] Applying 0002-vendor-davincicodeos-rebrand.patch"
 patch -p1 < /build/patches/0002-vendor-davincicodeos-rebrand.patch
 cd /build/android
