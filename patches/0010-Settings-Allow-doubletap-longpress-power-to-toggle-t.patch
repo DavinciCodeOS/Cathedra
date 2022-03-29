@@ -1,0 +1,89 @@
+From 58e1c3f0f1108a1fd456cca7c3814cd11b516f60 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Wed, 30 Mar 2022 00:05:33 +0300
+Subject: [PATCH 1/1] Settings: Allow doubletap/longpress power to toggle torch
+ [2/2]
+
+Change-Id: I9ec516289ba3c58d3d46c683303dedbfaebe1e66
+---
+ res/values/davinci_arrays.xml  | 31 +++++++++++++++++++++++++++++++
+ res/values/davinci_strings.xml |  6 ++++++
+ res/xml/gestures.xml           |  9 +++++++++
+ 3 files changed, 46 insertions(+)
+ create mode 100644 res/values/davinci_arrays.xml
+
+diff --git a/res/values/davinci_arrays.xml b/res/values/davinci_arrays.xml
+new file mode 100644
+index 0000000000..699b30aa38
+--- /dev/null
++++ b/res/values/davinci_arrays.xml
+@@ -0,0 +1,31 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2007 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<resources>
++
++    <!-- Torch Power button gestures -->
++    <string-array name="torch_power_button_gesture_entries">
++        <item>@string/torch_power_button_gesture_none</item>
++        <item>@string/torch_power_button_gesture_dt</item>
++        <item>@string/torch_power_button_gesture_lp</item>
++    </string-array>
++    <string-array name="torch_power_button_gesture_values" translatable="false">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++    </string-array>
++
++</resources>
+diff --git a/res/values/davinci_strings.xml b/res/values/davinci_strings.xml
+index e60a930bbe..447adb7922 100644
+--- a/res/values/davinci_strings.xml
++++ b/res/values/davinci_strings.xml
+@@ -20,4 +20,10 @@
+     <!-- Volume rocker music control -->
+     <string name="volume_button_music_control_title">Playback control</string>
+     <string name="volume_button_music_control_summary">When the screen is off, long-pressing the volume keys will skip music tracks</string>
++
++    <!-- Torch Power button gestures -->
++    <string name="torch_power_button_gesture_title">Toggle torch when screen off</string>
++    <string name="torch_power_button_gesture_none">Disabled</string>
++    <string name="torch_power_button_gesture_dt">Double press power button</string>
++    <string name="torch_power_button_gesture_lp">Long press power button</string>
+ </resources>
+diff --git a/res/xml/gestures.xml b/res/xml/gestures.xml
+index d24ee8f313..28dca08f6f 100644
+--- a/res/xml/gestures.xml
++++ b/res/xml/gestures.xml
+@@ -93,6 +93,15 @@
+         android:fragment="com.android.settings.gestures.SwipeToScreenshotGestureSettings"
+         settings:controller="com.android.settings.gestures.SwipeToScreenshotPreferenceController" />
+ 
++    <com.android.settings.custom.preference.SystemSettingListPreference
++        android:key="torch_power_button_gesture"
++        android:dialogTitle="@string/torch_power_button_gesture_title"
++        android:title="@string/torch_power_button_gesture_title"
++        android:summary="%s"
++        android:entries="@array/torch_power_button_gesture_entries"
++        android:entryValues="@array/torch_power_button_gesture_values"
++        android:defaultValue="0" />
++
+     <com.android.settings.custom.preference.SystemSettingSwitchPreference
+         android:key="volume_button_music_control"
+         android:title="@string/volume_button_music_control_title"
+-- 
+2.35.1
+
