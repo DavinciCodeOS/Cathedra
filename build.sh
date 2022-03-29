@@ -66,6 +66,8 @@ echo "[i] Applying 0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patc
 patch -p1 < /build/patches/0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patch
 echo "[i] Applying 0005-base-volume-key-music-control-1-2.patch"
 patch -p1 < /build/patches/0005-base-volume-key-music-control-1-2.patch
+echo "[i] Applying 0006-base-Add-api-to-take-screenshots.patch"
+patch -p1 < /build/patches/0006-base-Add-api-to-take-screenshots.patch
 cd /build/android
 
 echo "[i] Setting build environment..."
