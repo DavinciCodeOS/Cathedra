@@ -64,6 +64,8 @@ echo "[i] Applying 0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch"
 patch -p1 < /build/patches/0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch
 echo "[i] Applying 0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patch"
 patch -p1 < /build/patches/0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patch
+echo "[i] Applying 0005-base-volume-key-music-control-1-2.patch"
+patch -p1 < /build/patches/0005-base-volume-key-music-control-1-2.patch
 cd /build/android
 
 cd kernel/xiaomi/sm6150
