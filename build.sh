@@ -68,6 +68,8 @@ echo "[i] Applying 0005-base-volume-key-music-control-1-2.patch"
 patch -p1 < /build/patches/0005-base-volume-key-music-control-1-2.patch
 echo "[i] Applying 0006-base-Add-api-to-take-screenshots.patch"
 patch -p1 < /build/patches/0006-base-Add-api-to-take-screenshots.patch
+echo "[i] Applying 0007-base-Add-custom-camera-utilities.patch"
+patch -p1 < /build/patches/0007-base-Add-custom-camera-utilities.patch
 cd /build/android
 
 echo "[i] Setting build environment..."

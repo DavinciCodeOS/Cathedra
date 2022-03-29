@@ -1,0 +1,444 @@
+From 01ecc1d069c3e84a907bdfcceee78a7ee4409654 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Tue, 29 Mar 2022 22:44:49 +0300
+Subject: [PATCH 1/1] base: Add custom camera utilities
+
+Change-Id: I5ddfabfb104810da3a28eec52bb7ecea47a1e0f0
+---
+ .../internal/statusbar/IStatusBar.aidl        |  2 +
+ .../internal/statusbar/IStatusBarService.aidl |  5 ++
+ .../internal/util/davinci/DavinciUtils.java   | 68 +++++++++++++++++++
+ .../systemui/statusbar/CommandQueue.java      | 16 +++++
+ .../systemui/statusbar/phone/StatusBar.java   | 13 ++++
+ .../phone/StatusBarCommandQueueCallbacks.java | 11 +++
+ .../phone/dagger/StatusBarPhoneModule.java    |  3 +
+ .../policy/FlashlightController.java          |  1 +
+ .../policy/FlashlightControllerImpl.java      |  6 ++
+ .../statusbar/phone/StatusBarGoogle.java      | 10 +--
+ .../dagger/StatusBarGooglePhoneModule.java    |  8 ++-
+ .../statusbar/StatusBarManagerService.java    | 10 +++
+ 12 files changed, 146 insertions(+), 7 deletions(-)
+
+diff --git a/core/java/com/android/internal/statusbar/IStatusBar.aidl b/core/java/com/android/internal/statusbar/IStatusBar.aidl
+index ad4f280b1e8d..4109e0c1a353 100644
+--- a/core/java/com/android/internal/statusbar/IStatusBar.aidl
++++ b/core/java/com/android/internal/statusbar/IStatusBar.aidl
+@@ -288,4 +288,6 @@ oneway interface IStatusBar
+      * Triggers a GC in the system and status bar.
+      */
+     void runGcForTest();
++
++    void toggleCameraFlash();
+ }
+diff --git a/core/java/com/android/internal/statusbar/IStatusBarService.aidl b/core/java/com/android/internal/statusbar/IStatusBarService.aidl
+index fd28d1be8106..0118f122537d 100644
+--- a/core/java/com/android/internal/statusbar/IStatusBarService.aidl
++++ b/core/java/com/android/internal/statusbar/IStatusBarService.aidl
+@@ -162,4 +162,9 @@ interface IStatusBarService
+      * Starts the default assistant app.
+      */
+     void startAssist(in Bundle args);
++
++    /**
++     * Krypton extensions
++     */
++    void toggleCameraFlash();
+ }
+diff --git a/core/java/com/android/internal/util/davinci/DavinciUtils.java b/core/java/com/android/internal/util/davinci/DavinciUtils.java
+index dc0a36355d0d..07d6431e522e 100644
+--- a/core/java/com/android/internal/util/davinci/DavinciUtils.java
++++ b/core/java/com/android/internal/util/davinci/DavinciUtils.java
+@@ -16,11 +16,20 @@
+ 
+ package com.android.internal.util.davinci;
+ 
++import android.content.Context;
+ import android.content.Intent;
++import android.hardware.camera2.CameraManager;
+ import android.view.IWindowManager;
++import android.content.pm.PackageManager;
++import android.os.ServiceManager;
+ import android.view.WindowManagerGlobal;
++import android.hardware.camera2.CameraCharacteristics;
++import android.hardware.camera2.CameraAccessException;
+ import android.os.RemoteException;
+ 
++import com.android.internal.R;
++import com.android.internal.statusbar.IStatusBarService;
++
+ public class DavinciUtils {
+ 
+     public static final String INTENT_SCREENSHOT = "action_handler_screenshot";
+@@ -34,4 +43,63 @@ public class DavinciUtils {
+             e.printStackTrace();
+         }
+     }
++
++    public static boolean deviceSupportsFlashLight(Context context) {
++        CameraManager cameraManager = (CameraManager) context.getSystemService(
++                Context.CAMERA_SERVICE);
++        try {
++            String[] ids = cameraManager.getCameraIdList();
++            for (String id : ids) {
++                CameraCharacteristics c = cameraManager.getCameraCharacteristics(id);
++                Boolean flashAvailable = c.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
++                Integer lensFacing = c.get(CameraCharacteristics.LENS_FACING);
++                if (flashAvailable != null
++                        && flashAvailable
++                        && lensFacing != null
++                        && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
++                    return true;
++                }
++            }
++        } catch (CameraAccessException e) {
++            // Ignore
++        }
++        return false;
++    }
++
++    public static boolean deviceHasFlashlight(Context context) {
++        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
++    }
++
++    public static void toggleCameraFlash() {
++        FireActions.toggleCameraFlash();
++    }
++
++    /**
++     * Keep FireAction methods below this point.
++     * Place calls to methods above this point.
++     */
++    private static final class FireActions {
++        private static IStatusBarService mStatusBarService = null;
++        private static IStatusBarService getStatusBarService() {
++            synchronized (FireActions.class) {
++                if (mStatusBarService == null) {
++                    mStatusBarService = IStatusBarService.Stub.asInterface(
++                            ServiceManager.getService("statusbar"));
++                }
++                return mStatusBarService;
++            }
++        }
++
++        public static void toggleCameraFlash() {
++            IStatusBarService service = getStatusBarService();
++            if (service != null) {
++                try {
++                    service.toggleCameraFlash();
++                } catch (RemoteException e) {
++                    // do nothing.
++                }
++            }
++        }
++    }
++
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java b/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
+index 0b06b35b75d6..8c9a32809f44 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/CommandQueue.java
+@@ -149,6 +149,7 @@ public class CommandQueue extends IStatusBar.Stub implements
+     private static final int MSG_EMERGENCY_ACTION_LAUNCH_GESTURE      = 58 << MSG_SHIFT;
+     private static final int MSG_SET_NAVIGATION_BAR_LUMA_SAMPLING_ENABLED = 59 << MSG_SHIFT;
+     private static final int MSG_SET_UDFPS_HBM_LISTENER = 60 << MSG_SHIFT;
++    private static final int MSG_TOGGLE_CAMERA_FLASH               = 61 << MSG_SHIFT;
+ 
+     public static final int FLAG_EXCLUDE_NONE = 0;
+     public static final int FLAG_EXCLUDE_SEARCH_PANEL = 1 << 0;
+@@ -411,6 +412,8 @@ public class CommandQueue extends IStatusBar.Stub implements
+          * @see IStatusBar#setNavigationBarLumaSamplingEnabled(int, boolean)
+          */
+         default void setNavigationBarLumaSamplingEnabled(int displayId, boolean enable) {}
++
++        default void toggleCameraFlash() { }
+     }
+ 
+     public CommandQueue(Context context) {
+@@ -1121,6 +1124,14 @@ public class CommandQueue extends IStatusBar.Stub implements
+         GcUtils.runGcAndFinalizersSync();
+     }
+ 
++    @Override
++    public void toggleCameraFlash() {
++        synchronized (mLock) {
++            mHandler.removeMessages(MSG_TOGGLE_CAMERA_FLASH);
++            mHandler.sendEmptyMessage(MSG_TOGGLE_CAMERA_FLASH);
++        }
++    }
++
+     private final class H extends Handler {
+         private H(Looper l) {
+             super(l);
+@@ -1495,6 +1506,11 @@ public class CommandQueue extends IStatusBar.Stub implements
+                                 msg.arg2 != 0);
+                     }
+                     break;
++                case MSG_TOGGLE_CAMERA_FLASH:
++                    for (int i = 0; i < mCallbacks.size(); i++) {
++                        mCallbacks.get(i).toggleCameraFlash();
++                    }
++                    break;
+             }
+         }
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+index 02fd4106ecd4..841f22ac33c8 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+@@ -233,6 +233,7 @@ import com.android.systemui.statusbar.policy.ConfigurationController.Configurati
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController;
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController.DeviceProvisionedListener;
+ import com.android.systemui.statusbar.policy.ExtensionController;
++import com.android.systemui.statusbar.policy.FlashlightController;
+ import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.UserInfoControllerImpl;
+ import com.android.systemui.statusbar.policy.UserSwitcherController;
+@@ -441,6 +442,11 @@ public class StatusBar extends SystemUI implements
+         mCommandQueueCallbacks.animateExpandSettingsPanel(subpanel);
+     }
+ 
++    /** */
++    public void toggleCameraFlash() {
++        mCommandQueueCallbacks.toggleCameraFlash();
++    }
++
+     /** */
+     public void animateCollapsePanels(int flags, boolean force) {
+         mCommandQueueCallbacks.animateCollapsePanels(flags, force);
+@@ -658,6 +664,7 @@ public class StatusBar extends SystemUI implements
+     private boolean mIsOccluded;
+     private boolean mIsLaunchingActivityOverLockscreen;
+ 
++    private FlashlightController mFlashlightController;
+     private final UserSwitcherController mUserSwitcherController;
+     private final NetworkController mNetworkController;
+     private final LifecycleRegistry mLifecycle = new LifecycleRegistry(this);
+@@ -765,6 +772,7 @@ public class StatusBar extends SystemUI implements
+             PluginManager pluginManager,
+             Optional<LegacySplitScreen> splitScreenOptional,
+             LightsOutNotifController lightsOutNotifController,
++            FlashlightController flashlightController,
+             StatusBarNotificationActivityStarter.Builder
+                     statusBarNotificationActivityStarterBuilder,
+             ShadeController shadeController,
+@@ -851,6 +859,7 @@ public class StatusBar extends SystemUI implements
+         mNavigationBarController = navigationBarController;
+         mAccessibilityFloatingMenuController = accessibilityFloatingMenuController;
+         mAssistManagerLazy = assistManagerLazy;
++        mFlashlightController = flashlightController;
+         mConfigurationController = configurationController;
+         mNotificationShadeWindowController = notificationShadeWindowController;
+         mDozeServiceHost = dozeServiceHost;
+@@ -2434,6 +2443,10 @@ public class StatusBar extends SystemUI implements
+         pw.println("   Secure camera: " + CameraIntents.getSecureCameraIntent(mContext));
+         pw.println("   Override package: "
+                 + CameraIntents.getOverrideCameraPackage(mContext));
++
++        if (mFlashlightController != null) {
++            mFlashlightController.dump(fd, pw, args);
++        }
+     }
+ 
+     public static void dumpBarTransitions(
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarCommandQueueCallbacks.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarCommandQueueCallbacks.java
+index d206304f321e..141628592f6c 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarCommandQueueCallbacks.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarCommandQueueCallbacks.java
+@@ -64,6 +64,7 @@ import com.android.systemui.statusbar.VibratorHelper;
+ import com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayoutController;
+ import com.android.systemui.statusbar.phone.dagger.StatusBarComponent;
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController;
++import com.android.systemui.statusbar.policy.FlashlightController;
+ import com.android.systemui.statusbar.policy.HeadsUpManager;
+ import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.RemoteInputQuickSettingsDisabler;
+@@ -80,6 +81,7 @@ public class StatusBarCommandQueueCallbacks implements CommandQueue.Callbacks {
+     private final Context mContext;
+     private final ShadeController mShadeController;
+     private final CommandQueue mCommandQueue;
++    private final FlashlightController mFlashlightController;
+     private final NotificationPanelViewController mNotificationPanelViewController;
+     private final Optional<LegacySplitScreen> mSplitScreenOptional;
+     private final RemoteInputQuickSettingsDisabler mRemoteInputQuickSettingsDisabler;
+@@ -118,6 +120,7 @@ public class StatusBarCommandQueueCallbacks implements CommandQueue.Callbacks {
+             @Main Resources resources,
+             ShadeController shadeController,
+             CommandQueue commandQueue,
++            FlashlightController flashlightController,
+             NotificationPanelViewController notificationPanelViewController,
+             Optional<LegacySplitScreen> splitScreenOptional,
+             RemoteInputQuickSettingsDisabler remoteInputQuickSettingsDisabler,
+@@ -145,6 +148,7 @@ public class StatusBarCommandQueueCallbacks implements CommandQueue.Callbacks {
+         mContext = context;
+         mShadeController = shadeController;
+         mCommandQueue = commandQueue;
++        mFlashlightController = flashlightController;
+         mNotificationPanelViewController = notificationPanelViewController;
+         mSplitScreenOptional = splitScreenOptional;
+         mRemoteInputQuickSettingsDisabler = remoteInputQuickSettingsDisabler;
+@@ -640,4 +644,11 @@ public class StatusBarCommandQueueCallbacks implements CommandQueue.Callbacks {
+         }
+         return VibrationEffect.createWaveform(timings, /* repeat= */ -1);
+     }
++
++    @Override
++    public void toggleCameraFlash() {
++        if (mFlashlightController.isAvailable()) {
++            mFlashlightController.setFlashlight(!mFlashlightController.isEnabled());
++        }
++    }
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/dagger/StatusBarPhoneModule.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/dagger/StatusBarPhoneModule.java
+index 1f2d121b63a6..9b3f787299af 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/dagger/StatusBarPhoneModule.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/dagger/StatusBarPhoneModule.java
+@@ -107,6 +107,7 @@ import com.android.systemui.statusbar.policy.BatteryController;
+ import com.android.systemui.statusbar.policy.ConfigurationController;
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController;
+ import com.android.systemui.statusbar.policy.ExtensionController;
++import com.android.systemui.statusbar.policy.FlashlightController;
+ import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.BurnInProtectionController;
+ import com.android.systemui.statusbar.policy.UserInfoControllerImpl;
+@@ -207,6 +208,7 @@ public interface StatusBarPhoneModule {
+             PluginManager pluginManager,
+             Optional<LegacySplitScreen> splitScreenOptional,
+             LightsOutNotifController lightsOutNotifController,
++            FlashlightController flashlightController,
+             StatusBarNotificationActivityStarter.Builder
+                     statusBarNotificationActivityStarterBuilder,
+             ShadeController shadeController,
+@@ -310,6 +312,7 @@ public interface StatusBarPhoneModule {
+                 pluginManager,
+                 splitScreenOptional,
+                 lightsOutNotifController,
++                flashlightController,
+                 statusBarNotificationActivityStarterBuilder,
+                 shadeController,
+                 statusBarKeyguardViewManager,
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightController.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightController.java
+index e576f36d573a..4a93b3703fc1 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightController.java
+@@ -23,6 +23,7 @@ public interface FlashlightController extends CallbackController<FlashlightListe
+     void setFlashlight(boolean newState);
+     boolean isAvailable();
+     boolean isEnabled();
++    void initFlashLight();
+ 
+     public interface FlashlightListener {
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightControllerImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightControllerImpl.java
+index ad47e2bc44a8..cb7d0a4f2a25 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightControllerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/FlashlightControllerImpl.java
+@@ -95,6 +95,12 @@ public class FlashlightControllerImpl implements FlashlightController {
+         }
+     }
+ 
++    public synchronized void initFlashLight() {
++        if (mCameraId == null) {
++            tryInitCamera();
++        }
++    }
++
+     public void setFlashlight(boolean enabled) {
+         boolean pendingError = false;
+         synchronized (this) {
+diff --git a/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/StatusBarGoogle.java b/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/StatusBarGoogle.java
+index 52169f24fc46..67f0bca83ee4 100644
+--- a/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/StatusBarGoogle.java
++++ b/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/StatusBarGoogle.java
+@@ -114,6 +114,7 @@ import com.android.systemui.statusbar.policy.BurnInProtectionController;
+ import com.android.systemui.statusbar.policy.ConfigurationController;
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController;
+ import com.android.systemui.statusbar.policy.ExtensionController;
++import com.android.systemui.statusbar.policy.FlashlightController;
+ import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.UserInfoControllerImpl;
+ import com.android.systemui.statusbar.policy.UserSwitcherController;
+@@ -250,6 +251,7 @@ public class StatusBarGoogle extends StatusBar {
+                            PluginManager pluginManager,
+                            Optional<LegacySplitScreen> splitScreenOptional,
+                            LightsOutNotifController lightsOutNotifController,
++                           FlashlightController flashlightController,
+                            StatusBarNotificationActivityStarter.Builder
+                                    statusBarNotificationActivityStarterBuilder,
+                            ShadeController shadeController,
+@@ -306,9 +308,9 @@ public class StatusBarGoogle extends StatusBar {
+                 dozeParameters, scrimController, lockscreenWallpaperLazy, lockscreenGestureLogger, biometricUnlockControllerLazy,
+                 dozeServiceHost, powerManager, screenPinningRequest, dozeScrimController, volumeComponent, commandQueue,
+                 collapsedStatusBarFragmentLogger, statusBarComponentFactory, pluginManager, splitScreenOptional,
+-                lightsOutNotifController, statusBarNotificationActivityStarterBuilder, shadeController, statusBarKeyguardViewManager,
+-                viewMediatorCallback, initController, timeTickHandler, pluginDependencyProvider, keyguardDismissUtil,
+-                extensionController, userInfoControllerImpl, operatorNameViewControllerFactory, phoneStatusBarPolicy,
++                lightsOutNotifController, flashlightController, statusBarNotificationActivityStarterBuilder, shadeController,
++                statusBarKeyguardViewManager, viewMediatorCallback, initController, timeTickHandler, pluginDependencyProvider,
++                keyguardDismissUtil, extensionController, userInfoControllerImpl, operatorNameViewControllerFactory, phoneStatusBarPolicy,
+                 keyguardIndicationController, demoModeController, notificationShadeDepthControllerLazy,
+                 statusBarTouchableRegionManager, notificationIconAreaController, brightnessSliderFactory, wallpaperController,
+                 ongoingCallController, animationScheduler, locationPublisher, statusBarIconController,
+@@ -361,4 +363,4 @@ public class StatusBarGoogle extends StatusBar {
+         super.showWirelessChargingAnimation(i);
+         mAnimStartTime = SystemClock.uptimeMillis();
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/dagger/StatusBarGooglePhoneModule.java b/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/dagger/StatusBarGooglePhoneModule.java
+index 7c0fb369b603..99f9180151cc 100644
+--- a/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/dagger/StatusBarGooglePhoneModule.java
++++ b/packages/SystemUI/src/org/pixelexperience/systemui/statusbar/phone/dagger/StatusBarGooglePhoneModule.java
+@@ -110,6 +110,7 @@ import com.android.systemui.statusbar.policy.BurnInProtectionController;
+ import com.android.systemui.statusbar.policy.ConfigurationController;
+ import com.android.systemui.statusbar.policy.DeviceProvisionedController;
+ import com.android.systemui.statusbar.policy.ExtensionController;
++import com.android.systemui.statusbar.policy.FlashlightController;
+ import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.UserInfoControllerImpl;
+ import com.android.systemui.statusbar.policy.UserSwitcherController;
+@@ -209,6 +210,7 @@ public interface StatusBarGooglePhoneModule {
+             PluginManager pluginManager,
+             Optional<LegacySplitScreen> splitScreenOptional,
+             LightsOutNotifController lightsOutNotifController,
++            FlashlightController flashlightController,
+             StatusBarNotificationActivityStarter.Builder
+                     statusBarNotificationActivityStarterBuilder,
+             ShadeController shadeController,
+@@ -266,9 +268,9 @@ public interface StatusBarGooglePhoneModule {
+                 dozeParameters, scrimController, lockscreenWallpaperLazy, lockscreenGestureLogger, biometricUnlockControllerLazy,
+                 dozeServiceHost, powerManager, screenPinningRequest, dozeScrimController, volumeComponent, commandQueue,
+                 collapsedStatusBarFragmentLogger, statusBarComponentFactory, pluginManager, splitScreenOptional,
+-                lightsOutNotifController, statusBarNotificationActivityStarterBuilder, shadeController, statusBarKeyguardViewManager,
+-                viewMediatorCallback, initController, timeTickHandler, pluginDependencyProvider, keyguardDismissUtil,
+-                extensionController, userInfoControllerImpl, operatorNameViewControllerFactory, phoneStatusBarPolicy,
++                lightsOutNotifController, flashlightController, statusBarNotificationActivityStarterBuilder, shadeController,
++                statusBarKeyguardViewManager, viewMediatorCallback, initController, timeTickHandler, pluginDependencyProvider,
++                keyguardDismissUtil, extensionController, userInfoControllerImpl, operatorNameViewControllerFactory, phoneStatusBarPolicy,
+                 keyguardIndicationController, demoModeController, notificationShadeDepthControllerLazy,
+                 statusBarTouchableRegionManager, notificationIconAreaController, brightnessSliderFactory, wallpaperController,
+                 ongoingCallController, animationScheduler, locationPublisher, statusBarIconController,
+diff --git a/services/core/java/com/android/server/statusbar/StatusBarManagerService.java b/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
+index 2624f38ef554..8e72f04585fa 100644
+--- a/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
++++ b/services/core/java/com/android/server/statusbar/StatusBarManagerService.java
+@@ -880,6 +880,16 @@ public class StatusBarManagerService extends IStatusBarService.Stub implements D
+         return mTracingEnabled;
+     }
+ 
++    @Override
++    public void toggleCameraFlash() {
++        if (mBar != null) {
++            try {
++                mBar.toggleCameraFlash();
++            } catch (RemoteException ex) {
++            }
++        }
++    }
++
+     // TODO(b/117478341): make it aware of multi-display if needed.
+     @Override
+     public void disable(int what, IBinder token, String pkg) {
+-- 
+2.35.1
+
