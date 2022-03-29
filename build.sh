@@ -68,11 +68,6 @@ echo "[i] Applying 0005-base-volume-key-music-control-1-2.patch"
 patch -p1 < /build/patches/0005-base-volume-key-music-control-1-2.patch
 cd /build/android
 
-cd kernel/xiaomi/sm6150
-echo "[i] Obtaining latest wireguard sources for kernel..."
-bash scripts/fetch-latest-wireguard.sh
-cd /build/android
-
 echo "[i] Setting build environment..."
 
 source build/envsetup.sh
