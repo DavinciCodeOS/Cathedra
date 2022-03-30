@@ -76,9 +76,9 @@ cd packages/apps/Settings
 echo "[i] Applying 0008-Settings-Add-three-fingers-swipe-to-screenshot-2-2.patch"
 git am -3 /build/patches/0008-Settings-Add-three-fingers-swipe-to-screenshot-2-2.patch
 echo "[i] Applying 0009-Settings-Volume-key-music-control-2-2.patch"
-patch -p1 < /build/patches/0009-Settings-Volume-key-music-control-2-2.patch
+git am -3 /build/patches/0009-Settings-Volume-key-music-control-2-2.patch
 echo "[i] Applying 0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch"
-patch -p1 < /build/patches/0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch
+git am -3 /build/patches/0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch
 cd /build/android
 
 echo "[i] Setting build environment..."
@@ -89,7 +89,7 @@ lunch aosp_davinci-$BUILD_TYPE
 
 echo "[i] Starting build process..."
 
-make -j$(nproc --all) bacon
+make -j$THREAD_COUNT bacon
 
 echo "[i] Done"
 
