@@ -12,7 +12,7 @@ set -e
 BUILDER_USER="leonardo"
 BUILDER_EMAIL="not@existing.org"
 CACHE_SIZE="100GB"
-BUILD_TYPE="userdebug"
+BUILD_TYPE="user"
 THREAD_COUNT=$(nproc --all)
 UPLOAD_TO_SF=true
 
