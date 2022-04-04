@@ -81,6 +81,11 @@ echo "[i] Applying 0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.pat
 git am -3 /build/patches/0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch
 cd /build/android
 
+cd external/faceunlock
+echo "[i] Applying 0011-faceunlock-remove-conflicting-broken-dependencies.patch"
+git am -3 /build/patches/0011-faceunlock-remove-conflicting-broken-dependencies.patch
+cd /build/android
+
 echo "[i] Setting build environment..."
 
 source build/envsetup.sh
