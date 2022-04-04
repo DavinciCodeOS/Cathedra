@@ -5,5 +5,5 @@
 <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/msm-4.14" remote="gh" revision="12.1" />
 <project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="gh" revision="12" />
 <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="gh" revision="12" />
-<project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-19.1" />
+<project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-18.1" />
 </manifest>
