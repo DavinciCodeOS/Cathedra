@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
-<remote name="gh" fetch="https://github.com/" />
-<project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="gh" revision="12" />
-<project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/msm-4.14" remote="gh" revision="12.1" />
-<project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="gh" revision="12" />
-<project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="gh" revision="12" />
-<project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-18.1" />
+   <!-- Remotes -->
+   <remote name="gh" fetch="https://github.com/" />
+
+   <!-- Remove existing repositories -->
+   <remove-project name="platform/external/zlib" />
+
+   <!-- Add new repositories -->
+   <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="gh" revision="12" />
+   <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/msm-4.14" remote="gh" revision="12.1" />
+   <project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="gh" revision="12" />
+   <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="gh" revision="12" />
+   <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-18.1" />
+   <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="gh" revision="sc-v2" />
 </manifest>

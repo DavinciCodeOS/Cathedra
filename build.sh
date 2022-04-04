@@ -92,6 +92,9 @@ source build/envsetup.sh
 
 lunch aosp_davinci-$BUILD_TYPE
 
+echo "[i] Regenerating zlib ABI reference dumps for zlib-ng..."
+development/vndk/tools/header-checker/utils/create_reference_dumps.py --llndk -l libz -products aosp_davinci --build-variant $BUILD_TYPE
+
 echo "[i] Starting build process..."
 
 make -j$THREAD_COUNT bacon
