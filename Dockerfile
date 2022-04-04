@@ -31,7 +31,8 @@ RUN microdnf install -y \
              freetype \
              freetype-devel \
              rsync \
-             xz
+             xz \
+             tar
 
 RUN curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > /usr/bin/repo && chmod +x /usr/bin/repo
 
