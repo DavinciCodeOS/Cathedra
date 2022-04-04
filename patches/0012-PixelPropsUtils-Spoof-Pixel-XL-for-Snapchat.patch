@@ -1,0 +1,26 @@
+From 61dee2d2b714832c43bc7290f6ac4ec9cf086819 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Mon, 4 Apr 2022 22:49:01 +0200
+Subject: [PATCH 1/1] PixelPropsUtils: Spoof Pixel XL for Snapchat
+
+---
+ .../java/com/android/internal/util/custom/PixelPropsUtils.java | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/com/android/internal/util/custom/PixelPropsUtils.java b/core/java/com/android/internal/util/custom/PixelPropsUtils.java
+index b1e28715b63b..b5d8fe6ce1a5 100644
+--- a/core/java/com/android/internal/util/custom/PixelPropsUtils.java
++++ b/core/java/com/android/internal/util/custom/PixelPropsUtils.java
+@@ -50,7 +50,8 @@ public class PixelPropsUtils {
+ 
+     private static final Map<String, Object> propsToChangePixelXL;
+     private static final String[] packagesToChangePixelXL = {
+-            "com.google.android.apps.photos"
++            "com.google.android.apps.photos",
++            "com.snapchat.android"
+     };
+ 
+     private static final Map<String, ArrayList<String>> propsToKeep;
+-- 
+2.35.1
+

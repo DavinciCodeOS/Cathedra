@@ -70,6 +70,8 @@ echo "[i] Applying 0006-base-Add-api-to-take-screenshots.patch"
 git am -3 /build/patches/0006-base-Add-api-to-take-screenshots.patch
 echo "[i] Applying 0007-base-Add-custom-camera-utilities.patch"
 git am -3 /build/patches/0007-base-Add-custom-camera-utilities.patch
+echo "[i] Applying 0012-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
+git am -3 /build/patches/0012-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
 cd /build/android
 
 cd packages/apps/Settings
