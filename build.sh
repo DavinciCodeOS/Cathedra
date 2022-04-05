@@ -96,6 +96,13 @@ echo "[i] Applying 0011-faceunlock-remove-conflicting-broken-dependencies.patch"
 git am -3 /build/patches/0011-faceunlock-remove-conflicting-broken-dependencies.patch
 cd /build/android
 
+cd device/custom/sepolicy
+echo "[i] Applying 0013-Revert-Reenable-camera-allow-and-excludelist-propert.patch"
+git am -3 /build/patches/0013-Revert-Reenable-camera-allow-and-excludelist-propert.patch
+echo "[i] Applying 0014-Revert-Revert-common-Adapt-aux-camera-props-label-fo.patch"
+git am -3 /build/patches/0014-Revert-Revert-common-Adapt-aux-camera-props-label-fo.patch
+cd /build/android
+
 echo "[i] Setting build environment..."
 
 source build/envsetup.sh
