@@ -11,3 +11,6 @@ This repository contains all container configuration we deploy for the building 
 5. run `docker create --name=pebuild pebuild:latest`
 6. start the container `docker start pebuild`
 7. you may follow the build process by executing `docker logs -f pebuild`
+
+## Legacy tree!
+This branch and the build files were used to build the first releases of DavinciCodeOS based on Android 12.1 and Pixel Experience sources. Make sure to update your sources.
