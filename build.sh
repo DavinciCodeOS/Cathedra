@@ -35,7 +35,7 @@ ccache -M $CACHE_SIZE
 
 echo "[i] Initializing PE repository..."
 
-repo init -u https://github.com/PixelExperience/manifest -b twelve
+repo init -u https://github.com/PixelExperience/manifest -b twelve-plus
 
 echo "[i] Creating device specific manifests"
 
@@ -59,36 +59,22 @@ echo "[i] Cloning is done. Patching sources..."
 cd system/core
 echo "[i] Applying 0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch"
 # the change would otherwise break vbmeta loading and result in no wlan, ril etc
-git am -3 /build/patches/0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch
+git am -3 /build/dcos/patches/0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch
 cd /build/android
 
 cd vendor/aosp
 echo "[i] Applying 0002-vendor-davincicodeos-rebrand.patch"
-git am -3 /build/patches/0002-vendor-davincicodeos-rebrand.patch
+git am -3 /build/dcos/patches/0002-vendor-davincicodeos-rebrand.patch
+cd /build/android
+
+cd build
+echo "[i] Applying 0003-releasetools-rebrand-to-davincicodeos.patch"
+git am -3 /build/dcos/patches/0003-releasetools-rebrand-to-davincicodeos.patch
 cd /build/android
 
 cd frameworks/base
-echo "[i] Applying 0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch"
-git am -3 /build/patches/0003-base-Add-three-fingers-swipe-to-screenshot-1-2.patch
-echo "[i] Applying 0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patch"
-git am -3 /build/patches/0004-Allow-doubletap-longpress-power-to-toggle-torch-1-2.patch
-echo "[i] Applying 0005-base-volume-key-music-control-1-2.patch"
-git am -3 /build/patches/0005-base-volume-key-music-control-1-2.patch
-echo "[i] Applying 0006-base-Add-api-to-take-screenshots.patch"
-git am -3 /build/patches/0006-base-Add-api-to-take-screenshots.patch
-echo "[i] Applying 0007-base-Add-custom-camera-utilities.patch"
-git am -3 /build/patches/0007-base-Add-custom-camera-utilities.patch
-echo "[i] Applying 0012-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
-git am -3 /build/patches/0012-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
-cd /build/android
-
-cd packages/apps/Settings
-echo "[i] Applying 0008-Settings-Add-three-fingers-swipe-to-screenshot-2-2.patch"
-git am -3 /build/patches/0008-Settings-Add-three-fingers-swipe-to-screenshot-2-2.patch
-echo "[i] Applying 0009-Settings-Volume-key-music-control-2-2.patch"
-git am -3 /build/patches/0009-Settings-Volume-key-music-control-2-2.patch
-echo "[i] Applying 0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch"
-git am -3 /build/patches/0010-Settings-Allow-doubletap-longpress-power-to-toggle-t.patch
+echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
+git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
 cd /build/android
 
 echo "[i] Setting build environment..."

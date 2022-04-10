@@ -1,32 +1,32 @@
-From d98b0e86fa782e7dc4719010f6dcad02f2dbf6e8 Mon Sep 17 00:00:00 2001
+From 79beed3f329e192092f9effe1e2f26cb9642cdf1 Mon Sep 17 00:00:00 2001
 From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
-Date: Wed, 23 Mar 2022 16:14:01 +0200
+Date: Sun, 10 Apr 2022 16:17:41 +0300
 Subject: [PATCH 1/1] vendor: davincicodeos rebrand
 
-Change-Id: If33628c9fcf5862f259d027700fe924f37fab673
+Change-Id: Id88c643522e34a6444c356f1cf692607902810a0
 ---
  config/branding.mk | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/config/branding.mk b/config/branding.mk
-index ceaabaa4..a8569cd2 100644
+index 86f43ef0..62fc092f 100644
 --- a/config/branding.mk
 +++ b/config/branding.mk
 @@ -1,4 +1,4 @@
 -CUSTOM_BUILD_TYPE ?= UNOFFICIAL
 +CUSTOM_BUILD_TYPE ?= OFFICIAL
-
+ 
  CUSTOM_DATE_YEAR := $(shell date -u +%Y)
  CUSTOM_DATE_MONTH := $(shell date -u +%m)
 @@ -10,5 +10,5 @@ CUSTOM_BUILD_DATE := $(CUSTOM_DATE_YEAR)$(CUSTOM_DATE_MONTH)$(CUSTOM_DATE_DAY)-$
-
+ 
  CUSTOM_PLATFORM_VERSION := 12.1
-
--CUSTOM_VERSION := PixelExperience_$(CUSTOM_BUILD)-$(CUSTOM_PLATFORM_VERSION)-$(CUSTOM_BUILD_DATE)-$(CUSTOM_BUILD_TYPE)
--CUSTOM_VERSION_PROP := twelve
+ 
+-CUSTOM_VERSION := PixelExperience_Plus_$(CUSTOM_BUILD)-$(CUSTOM_PLATFORM_VERSION)-$(CUSTOM_BUILD_DATE)-$(CUSTOM_BUILD_TYPE)
+-CUSTOM_VERSION_PROP := twelve_plus
 \ No newline at end of file
 +CUSTOM_VERSION := DavinciCodeOS_$(CUSTOM_BUILD)-$(CUSTOM_PLATFORM_VERSION)-$(CUSTOM_BUILD_DATE)-$(CUSTOM_BUILD_TYPE)
-+CUSTOM_VERSION_PROP := twelve
---
++CUSTOM_VERSION_PROP := twelve_plus
+-- 
 2.35.1
 

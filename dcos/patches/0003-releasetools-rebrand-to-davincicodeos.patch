@@ -1,0 +1,28 @@
+From d2f70e352a72d469d96903d5cf918f8ddd0ca1be Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Sun, 10 Apr 2022 16:39:11 +0300
+Subject: [PATCH 1/1] releasetools: rebrand to davincicodeos
+
+Change-Id: I33cd54d4c63a7167fb4a47d3113901ef014064e1
+---
+ tools/releasetools/edify_generator.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/releasetools/edify_generator.py b/tools/releasetools/edify_generator.py
+index c80becfac..88d149077 100644
+--- a/tools/releasetools/edify_generator.py
++++ b/tools/releasetools/edify_generator.py
+@@ -268,8 +268,8 @@ class EdifyGenerator(object):
+                                   security_patch, device):
+     self.Print("----------------------------------------------")
+     if is_plus:
+-      self.Print("        PixelExperience (Plus edition)")
+-      self.Print("                by jhenrique09")
++      self.Print("                DavinciCodeOS")
++      self.Print("                by Mary & Adrian")
+     else:
+       self.Print("              PixelExperience")
+       self.Print("              by jhenrique09")
+-- 
+2.35.1
+
