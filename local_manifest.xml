@@ -5,6 +5,7 @@
 
    <!-- Remove existing repositories -->
    <remove-project name="platform/external/zlib" />
+   <remove-project name="packages_apps_Updates" />
 
    <!-- Add new repositories -->
    <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="gh" revision="12" />
@@ -13,4 +14,5 @@
    <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="gh" revision="12" />
    <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-19.1" />
    <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="gh" revision="sc-v2" />
+   <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="gh" revision="twelve" />
 </manifest>
