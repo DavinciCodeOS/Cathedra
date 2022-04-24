@@ -1,0 +1,27 @@
+From 6eebff0b12e03eeb08f44a30ebb5052a5ba57e61 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Sun, 24 Apr 2022 23:11:24 +0300
+Subject: [PATCH 1/1] soong: clang builds with O3
+
+Change-Id: Ia73cf825136b45539ec7fbba1c1bd342969afe51
+---
+ cc/config/clang.go | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/cc/config/clang.go b/cc/config/clang.go
+index 9e70cb84e..5d8aedba4 100644
+--- a/cc/config/clang.go
++++ b/cc/config/clang.go
+@@ -152,6 +152,9 @@ func init() {
+ 		// This macro allows the bionic versioning.h to indirectly determine whether the
+ 		// option -Wunguarded-availability is on or not.
+ 		"-D__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__",
++
++                // Experimental O3 build system wide
++                "-O3",
+ 	})
+ 
+ 	staticVariableExportedToBazel("ClangExtraCppflags", []string{
+-- 
+2.35.1
+

@@ -79,14 +79,19 @@ echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
 git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
 cd /build/android
 
+cd build/soong
+echo "[i] Applying 0006-soong-clang-builds-with-O3.patch"
+git am -3 /build/dcos/patches/0006-soong-clang-builds-with-O3.patch
+cd /build/android
+
 echo "[i] Setting build environment..."
 
 source build/envsetup.sh
 
 lunch aosp_davinci-$BUILD_TYPE
 
-echo "[i] Regenerating zlib ABI reference dumps for zlib-ng..."
-development/vndk/tools/header-checker/utils/create_reference_dumps.py --llndk -l libz -products aosp_davinci --build-variant $BUILD_TYPE
+echo "[i] Regenerating ABI reference dumps for O3 build..."
+development/vndk/tools/header-checker/utils/create_reference_dumps.py -products aosp_davinci --build-variant $BUILD_TYPE
 
 echo "[i] Starting build process for DavinciCodeOS..."
 
