@@ -1,0 +1,25 @@
+From cf1d7a92ab6cfaeb48a65a314218784cec132339 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Sun, 24 Apr 2022 18:16:47 +0300
+Subject: [PATCH 1/1] vendor: fix themedicons path
+
+Change-Id: I8371eb46292923c8d101afa86cfbb34d9379da49
+---
+ config/common.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/common.mk b/config/common.mk
+index 3fdefb93..a8a6639e 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -227,6 +227,6 @@ $(call inherit-product, vendor/aosp/config/ota.mk)
+ $(call inherit-product, vendor/aosp/config/rro_overlays.mk)
+ 
+ # Themed icons
+-$(call inherit-product, packages/overlays/ThemeIcons/config.mk)
++$(call inherit-product, packages/overlays/ThemedIcons/config.mk)
+ 
+ -include $(WORKSPACE)/build_env/image-auto-bits.mk
+-- 
+2.35.1
+

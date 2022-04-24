@@ -65,9 +65,11 @@ cd /build/android
 cd vendor/aosp
 echo "[i] Applying 0002-vendor-davincicodeos-rebrand.patch"
 git am -3 /build/dcos/patches/0002-vendor-davincicodeos-rebrand.patch
+echo "[i] Applying 0005-vendor-fix-themedicons-path.patch"
+git am -3 /build/dcos/patches/0005-vendor-fix-themedicons-path.patch
 cd /build/android
 
-cd build
+cd build/tools
 echo "[i] Applying 0003-releasetools-rebrand-to-davincicodeos.patch"
 git am -3 /build/dcos/patches/0003-releasetools-rebrand-to-davincicodeos.patch
 cd /build/android
