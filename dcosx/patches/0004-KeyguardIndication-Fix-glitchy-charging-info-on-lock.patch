@@ -1,0 +1,109 @@
+From 8dfaba7e87f81ff7895dc7696c265ea96c5f3395 Mon Sep 17 00:00:00 2001
+From: Pranav Vashi <neobuddy89@gmail.com>
+Date: Mon, 31 Jan 2022 02:32:26 +0530
+Subject: [PATCH 1/1] KeyguardIndication: Fix glitchy charging info on
+ lockscreen
+
+* This should fix charging info getting refreshed with animation
+  every couple of seconds - on both lockscreen and ambient display.
+
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+Change-Id: Ib59e46fc13ce4ac8743880487f4ef2b97813525e
+---
+ ...uardIndicationRotateTextViewController.java | 18 +++++++++---------
+ .../phone/KeyguardIndicationTextView.java      |  5 +++++
+ 2 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardIndicationRotateTextViewController.java b/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardIndicationRotateTextViewController.java
+index d73d9cdb7d40..aa28940d894b 100644
+--- a/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardIndicationRotateTextViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardIndicationRotateTextViewController.java
+@@ -142,10 +142,10 @@ public class KeyguardIndicationRotateTextViewController extends
+         boolean currMsgShownForMinTime = timeSinceLastIndicationSwitch >= minShowDuration;
+         if (hasNewIndication) {
+             if (mCurrIndicationType == INDICATION_TYPE_NONE || mCurrIndicationType == type) {
+-                showIndication(type);
++                showIndication(type, showAsap);
+             } else if (showAsap) {
+                 if (currMsgShownForMinTime) {
+-                    showIndication(type);
++                    showIndication(type, showAsap);
+                 } else {
+                     mIndicationQueue.removeIf(x -> x == type);
+                     mIndicationQueue.add(0 /* index */, type /* type */);
+@@ -156,7 +156,7 @@ public class KeyguardIndicationRotateTextViewController extends
+                         getMinVisibilityMillis(mIndicationMessages.get(type)),
+                         DEFAULT_INDICATION_SHOW_LENGTH);
+                 if (timeSinceLastIndicationSwitch >= nextShowTime) {
+-                    showIndication(type);
++                    showIndication(type, showAsap);
+                 } else {
+                     scheduleShowNextIndication(
+                             nextShowTime - timeSinceLastIndicationSwitch);
+@@ -173,7 +173,7 @@ public class KeyguardIndicationRotateTextViewController extends
+                 if (mShowNextIndicationRunnable != null) {
+                     mShowNextIndicationRunnable.runImmediately();
+                 } else {
+-                    showIndication(INDICATION_TYPE_NONE);
++                    showIndication(INDICATION_TYPE_NONE, true);
+                 }
+             } else {
+                 scheduleShowNextIndication(minShowDuration - timeSinceLastIndicationSwitch);
+@@ -238,7 +238,7 @@ public class KeyguardIndicationRotateTextViewController extends
+      * Will re-add this indication to be re-shown after all other indications have been
+      * rotated through.
+      */
+-    private void showIndication(@IndicationType int type) {
++    private void showIndication(@IndicationType int type, boolean showAsap) {
+         cancelScheduledIndication();
+ 
+         final CharSequence previousMessage = mCurrMessage;
+@@ -256,7 +256,7 @@ public class KeyguardIndicationRotateTextViewController extends
+         mLastIndicationSwitch = SystemClock.uptimeMillis();
+         if (!TextUtils.equals(previousMessage, mCurrMessage)
+                 || previousIndicationType != mCurrIndicationType) {
+-            mView.switchIndication(mIndicationMessages.get(type));
++            mView.switchIndication(mIndicationMessages.get(type), showAsap);
+         }
+ 
+         // only schedule next indication if there's more than just this indication in the queue
+@@ -308,9 +308,9 @@ public class KeyguardIndicationRotateTextViewController extends
+                     if (isDozing == mIsDozing) return;
+                     mIsDozing = isDozing;
+                     if (mIsDozing) {
+-                        showIndication(INDICATION_TYPE_NONE);
++                        showIndication(INDICATION_TYPE_NONE, true);
+                     } else if (mIndicationQueue.size() > 0) {
+-                        showIndication(mIndicationQueue.remove(0));
++                        showIndication(mIndicationQueue.remove(0), true);
+                     }
+                 }
+             };
+@@ -328,7 +328,7 @@ public class KeyguardIndicationRotateTextViewController extends
+             mShowIndicationRunnable = () -> {
+                 int type = mIndicationQueue.size() == 0
+                         ? INDICATION_TYPE_NONE : mIndicationQueue.remove(0);
+-                showIndication(type);
++                showIndication(type, true);
+             };
+             mCancelDelayedRunnable = mExecutor.executeDelayed(mShowIndicationRunnable, delay);
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardIndicationTextView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardIndicationTextView.java
+index 339f371c0d12..20aaa7b103c8 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardIndicationTextView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardIndicationTextView.java
+@@ -77,6 +77,11 @@ public class KeyguardIndicationTextView extends TextView {
+         setText("");
+     }
+ 
++    public void switchIndication(KeyguardIndication indication, boolean animate) {
++        switchIndication(indication == null ? null : indication.getMessage(), indication,
++            animate, null);
++    }
++
+     /**
+      * Changes the text with an animation.
+      */
+-- 
+2.35.1
+
