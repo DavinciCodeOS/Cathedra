@@ -110,6 +110,8 @@ echo "[i] Applying 0001-LockscreenCharging-squashed-1-3.patch"
 git am -3 /build/dcosx/patches/0001-LockscreenCharging-squashed-1-3.patch
 echo "[i] Applying 0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch"
 git am -3 /build/dcosx/patches/0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch
+echo "[i] Applying 0005-add-auto-brightness-button.patch"
+git am -3 /build/dcosx/patches/0005-add-auto-brightness-button.patch
 cd /build/android
 
 cd system/core

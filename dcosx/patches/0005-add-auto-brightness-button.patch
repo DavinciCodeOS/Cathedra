@@ -1,0 +1,803 @@
+From 3c029e84c3724e50b4f4713d20876297d3eb170d Mon Sep 17 00:00:00 2001
+From: SagarMakhar <sagarmakhar@gmail.com>
+Date: Sun, 24 Oct 2021 17:39:47 +0000
+Subject: [PATCH] SystemUI: Add auto brightness button to QS brightness slider
+
+[ghostrider-reborn]
+- Stripped from commit "Port brightness slider changes" to
+  include only auto brightness icon, without runtime toggle
+- Change button color depending on state
+- Update off state icon from Amartya (@ yukiscape)
+- Minor refinements
+- Adapt to Sv2
+
+Original commit:
+
+[SQUASH] SystemUI: Port brightness slider changes
+
+Includes:
+- Brightness slider on footer
+- Auto brightness icon
+- Dropped + - buttons
+
+Squashed commit of the following:
+
+commit d1f762251df4af983a6c4c2c715b74cc8eab7f11
+Author: SagarMakhar <sagarmakhar@gmail.com>
+Date:   Sat Aug 21 13:26:11 2021 +0000
+
+    Quick QS brightness slider [1/2]
+
+    Change-Id: I34e3e470177f23c5deb9fd5187991d09b207576a
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit adc7fc6ebf21523a9086d21018786cb166814e7b
+Author: SagarMakhar <sagarmakhar@gmail.com>
+Date:   Thu Oct 8 19:49:58 2020 +0000
+
+    Fix brightness slider position after coming from landscape to portrait
+
+    - Fix toggle vs position behavior on first boot
+    - Fix position stucked in bottom after coming from landscape
+
+    Change-Id: I611b0643ba3b5eabd08f52f8ca3b6b6513ecda1e
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 71ba9b41f0d92ed5814663db5da8670f0fee32bb
+Author: maxwen <max.weninger@gmail.com>
+Date:   Mon Nov 19 12:37:01 2018 +0000
+
+    base: SystemUI: add tuner prefs for QS brightness buttons [1/2]
+
+    * Add option for showing Auto brightness icon
+    * Add option for showing brightness increase/decrease buttons
+
+    * Citrus-CAF edits:
+      Move options to CustomSquash
+
+    * Squashed commits from:
+      omnirom/android_frameworks_base@f26575a
+      omnirom/android_frameworks_base@0c49a08
+      omnirom/android_frameworks_base@0382757
+
+    * Wight554:
+      Add missing BrightnessDialog checks
+
+    Signed-off-by: Adarsh-MR <adarshmr1998@gmail.com>
+    Co-authored-by: Adarsh-MR <adarshmr1998@gmail.com>
+    Signed-off-by: Vol Zhdanov <wight554@gmail.com>
+    Signed-off-by: Shubham Singh <coolsks94@gmail.com>
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+    Change-Id: Ie24ebcc0fc7c0bb98411c77b29a2bd427302cdff
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 5c6ad7a6c000ccb1449d13363d89d618ce4a7e80
+Author: ezio84 <brabus84@gmail.com>
+Date:   Tue Nov 20 23:51:33 2018 +0100
+
+    Refresh QS brightness icon and improve its touch area and padding
+
+    Signed-off-by: xyyx <xyyx@mail.ru>
+    Change-Id: I156940dd74df1f4bcdb5f407f1e702879821c326
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit a08b2e062d5c25fbfa488802a4bc5834aba893dd
+Author: Alex Cruz <alex@dirtyunicorns.com>
+Date:   Fri Nov 23 19:35:53 2018 +0100
+
+    Use brightness slider better values also for Settings brightness slider
+
+    Change-Id: I4914213e59dd73f621b1a093f07ee192c81806c5
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit b7d461129e8024508c3109f216304e0cf1adf8df
+Author: ezio84 <brabus84@gmail.com>
+Date:   Thu Nov 22 22:33:10 2018 +0100
+
+    Brightness slider + - buttons: use more granular values
+
+    + - 10 was too much, we have the slider to quickly switch from low
+    to high brightness or viceversa.
+
+    With + - 2 we also avoid unwanted too fast slider movements
+
+    Change-Id: I849956d75af37d47f6ab463a282bd4ad10098264
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 8cbcd59790e931af436b8d574db29787ad880077
+Author: Alex Cruz <alex@dirtyunicorns.com>
+Date:   Thu Nov 15 23:16:45 2018 -0600
+
+    Multi-User fixes for brightness slider mod
+
+    Previously this wasn't working in guest mode or in any multi-
+    user accounts. While most don't care about this, this is just
+    janky for our stuff not to work in these situations.
+
+    Change-Id: Ic1ae93d2f4ccd023bd4ec4ed2b6edd9243f49e6a
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 350254ad5395f5c1b5f65289f58aab3c3c33415e
+Author: Giuseppe Maggio <jertlokk@gmail.com>
+Date:   Wed Nov 14 04:22:01 2018 +0100
+
+    base: Adapt custom brightness actions from QSPanel to BrightnessDialog
+
+    This commit fixes the + and - controls under Settings > Display > Brightness.
+
+    Change-Id: I9f8bd62e51b05f5166135b58b3d112bf155d6fc5
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 4b9f0cb4ffaf4352720ba9e2e23419db722e9d9f
+Author: ezio84 <brabus84@gmail.com>
+Date:   Mon Nov 12 22:10:15 2018 +0100
+
+    Bottom brightness slider fixes and improvements
+
+    - fix  buttons for automatic mode
+    P brightness management is different from O, now we must send the
+    SCREEN_BRIGHTNESS value, then BrightnessUtils will convert it
+    and the controller will set the level according to the set brightness
+    mode
+
+    - use ImageButton instead of ImageView to avoid buttons scaling
+    when showing the brightness mirror
+
+    - use + and - as icons for the slider buttons
+
+    Change-Id: I1f7d35746e8907f1db202e6c13ac43e8a71aa043
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 9571fff8ad42e41f263716c642173d7eb79b52ee
+Author: PMS22 <pratham220399@gmail.com>
+Date:   Sun Apr 22 16:51:08 2018 +0000
+
+    Brightness slider: Vibrate after a long press
+
+    - A small haptic feedback after long pressing feels good
+
+    Change-Id: I1058bbcf24bbccaeeebb3f547905860552bd1131
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 02a84a98d17c02cda05c7b53a6849a1d44c9c79a
+Author: PMS22 <prathams99@rediff.com>
+Date:   Sun May 13 05:56:11 2018 +0000
+
+    Brightness Buttons: Improve touch area
+
+    - With 537fba7 there could be more button area to be used. But by increasing the
+      width of the drawables, its possible
+      to use even more area.
+
+    Thanks to ezio84 for the new drawables (centered image in vector)
+
+    Change-Id: I7d18569d364f3e1f756a1935895c02aab7a2dc4d
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit dd2770d0b68e70613c6748580128c4fb624ab812
+Author: ezio84 <brabus84@gmail.com>
+Date:   Wed Nov 8 11:36:53 2017 +0100k
+
+    Footer brightness slider: Rework and improvements
+
+    Change-Id: Ia2343d78b62323f9757ccb4b2ed740851791eef7
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 1bdb83fed885461c1d50ab7d117cdea8f91d7c2d
+Author: Alex Cruz <du.alexcruz@gmail.com>
+Date:   Sun Nov 5 21:16:22 2017 -0500
+
+    Make use of the brightness slider buttons
+
+    Introduced in the commit below were two buttons that were used to mirror
+    the Oxygen OS look. They did absolutely nothing until now.
+
+    https://github.com/DirtyUnicorns/android_frameworks_base/commit/7f567fde01da0d313d123d711afa915cb05e4ee8
+
+    This works in two ways, single clicks and long clicks
+
+    Single click = decreases and increases the brightness in intervals of 10
+    Long click = sets the brightness to low or high depending on which side you pick
+
+    - Check for auto brightness mode and disable it if enabled before performing actions
+
+    Thanks to xdnax, ezio84 and Thecrazyskull for the idea/suggestions
+
+    Change-Id: I3267439145a9d2bbc16cb6c55586a7403472381c
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 473ba2f0587462b88e2d135d1df3c29318a541d8
+Author: JBCDroid2 <jonathan.lyndo@outlook.com>
+Date:   Wed Nov 1 10:50:14 2017 -0400
+
+    Rework auto brightness implementation
+
+    Change-Id: I111501430dd143dac4b90667453b5ebee09d0bbb
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 2e87fb3fb4dc42988b04abbcf98e91b2346d91fd
+Author: jhenrique09 <jhenrique09.mcz@hotmail.com>
+Date:   Fri Oct 20 12:38:44 2017 -0200
+
+    Update paddings for Brightness control on footer
+
+    Change-Id: I1ab302f9e8740cb8a229182249fb46dc929a7fa2
+    Signed-off-by: Shubham Singh <coolsks94@gmail.com>
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit a053fea485600b792778d7f1608bf8b398ab451a
+Author: SpiritCroc <spiritcroc@gmail.com>
+Date:   Mon Oct 31 10:55:05 2016 +0100
+
+    Fix automatic brightness QS toggle icon
+
+    Change-Id: Iedcc7b3f43f758664629bc66b12f22cff0059f8f
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit 52a914b9514e9b6402b9f285c750a39edc74effc
+Author: maxwen <max.weninger@gmail.com>
+Date:   Sun Jan 3 11:52:48 2016 +0530
+
+    Add auto brightness toggle to Quick Settings
+
+    - Not a new tile, just a small icon/toggle beside the brightness slider
+
+    Change-Id: I99a39156f931943e98d539a07046698c16361d07
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit bcc2418355c654e26e70d1742739fb4ecfce9380
+Author: maxwen <max.weninger@gmail.com>
+Date:   Tue Apr 3 18:10:05 2018 +0200
+
+    base: SystemUI: add pref for qs brightness slider position (1/2)
+
+    Change-Id: I5dfb7170b7d9f3328f9ab0a997135dc4db4cd3bf
+    Signed-off-by: xyyx <xyyx@mail.ru>
+    Signed-off-by: Shubham Singh <coolsks94@gmail.com>
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+commit de77aa371c68b7d9049ba981ced69f8512022145
+Author: SagarMakhar <sagarmakhar@gmail.com>
+Date:   Sun Sep 15 18:15:58 2019 +0000
+
+    Revert "Remove unused auto brightness drawables."
+
+    This reverts commit 1f2484b2f790b2f1cd80bda12d75c263331314a6.
+
+    Signed-off-by: Arghya Chanda <arghyac35@gmail.com>
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+    Change-Id: Ic2a9fe9f999c03be4e73be9ec8a923cea4970819
+    Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+
+Signed-off-by: SagarMakhar <sagarmakhar@gmail.com>
+Signed-off-by: Genkzsz11 <genkzsz11@gmail.com>
+
+idoybh (YAAP): Removed stupid QQS slider (It just takes it away form the thumb and serves no real purpose)
+now this squash is unfair because it leaves many authors out :(
+let's take the time to be the only saints in Sodom and Gomorrah.
+Also minor improvement to some code
+
+Co-authored-by: SagarMakhar <sagarmakhar@gmail.com>
+Co-authored-by: maxwen <max.weninger@gmail.com>
+Co-authored-by: ezio84 <brabus84@gmail.com>
+Co-authored-by: Alex Cruz <alex@dirtyunicorns.com>
+Co-authored-by: Giuseppe Maggio <jertlokk@gmail.com>
+Co-authored-by: PMS22 <pratham220399@gmail.com>
+Co-authored-by: JBCDroid2 <jonathan.lyndo@outlook.com>
+Co-authored-by: jhenrique09 <jhenrique09.mcz@hotmail.com>
+Co-authored-by: SpiritCroc <spiritcroc@gmail.com>
+Co-authored-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+Change-Id: I2b99460e31aad87a3cabbb19c61ed54f7817ff19
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+---
+ .../drawable/bg_qs_brightness_auto_off.xml    | 22 +++++++++
+ .../res/drawable/bg_qs_brightness_auto_on.xml | 22 +++++++++
+ .../drawable/ic_qs_brightness_auto_off.xml    | 28 +++++++++++
+ .../res/drawable/ic_qs_brightness_auto_on.xml | 26 ++++++++++
+ .../quick_settings_brightness_dialog.xml      | 19 ++++++--
+ .../systemui/qs/QSPanelController.java        |  3 +-
+ .../qs/QuickQSBrightnessController.kt         |  2 +-
+ .../brightness/BrightnessController.java      | 47 ++++++++++++++++++-
+ .../settings/brightness/BrightnessDialog.java |  4 +-
+ .../BrightnessSliderController.java           | 10 +++-
+ .../brightness/BrightnessSliderView.java      |  3 +-
+ .../systemui/statusbar/phone/StatusBar.java   |  1 +
+ .../policy/BrightnessMirrorController.java    | 31 +++++++++++-
+ 13 files changed, 207 insertions(+), 11 deletions(-)
+ create mode 100644 packages/SystemUI/res/drawable/bg_qs_brightness_auto_off.xml
+ create mode 100644 packages/SystemUI/res/drawable/bg_qs_brightness_auto_on.xml
+ create mode 100644 packages/SystemUI/res/drawable/ic_qs_brightness_auto_off.xml
+ create mode 100644 packages/SystemUI/res/drawable/ic_qs_brightness_auto_on.xml
+
+diff --git a/packages/SystemUI/res/drawable/bg_qs_brightness_auto_off.xml b/packages/SystemUI/res/drawable/bg_qs_brightness_auto_off.xml
+new file mode 100644
+index 000000000000..36a1cacb6153
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/bg_qs_brightness_auto_off.xml
+@@ -0,0 +1,22 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ~ Copyright (C) 2021 The Android Open Source Project
++  ~
++  ~ Licensed under the Apache License, Version 2.0 (the "License");
++  ~ you may not use this file except in compliance with the License.
++  ~ You may obtain a copy of the License at
++  ~
++  ~      http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing, software
++  ~ distributed under the License is distributed on an "AS IS" BASIS,
++  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  ~ See the License for the specific language governing permissions and
++  ~ limitations under the License.
++  -->
++
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <corners android:radius="24dp" />
++    <solid android:color="?attr/offStateColor" />
++    <size android:width="48dp" android:height="48dp" />
++</shape>
+diff --git a/packages/SystemUI/res/drawable/bg_qs_brightness_auto_on.xml b/packages/SystemUI/res/drawable/bg_qs_brightness_auto_on.xml
+new file mode 100644
+index 000000000000..7e1a9a0d282f
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/bg_qs_brightness_auto_on.xml
+@@ -0,0 +1,22 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ~ Copyright (C) 2021 The Android Open Source Project
++  ~
++  ~ Licensed under the Apache License, Version 2.0 (the "License");
++  ~ you may not use this file except in compliance with the License.
++  ~ You may obtain a copy of the License at
++  ~
++  ~      http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing, software
++  ~ distributed under the License is distributed on an "AS IS" BASIS,
++  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  ~ See the License for the specific language governing permissions and
++  ~ limitations under the License.
++  -->
++
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <corners android:radius="24dp" />
++    <solid android:color="?android:attr/colorAccent" />
++    <size android:width="48dp" android:height="48dp" />
++</shape>
+diff --git a/packages/SystemUI/res/drawable/ic_qs_brightness_auto_off.xml b/packages/SystemUI/res/drawable/ic_qs_brightness_auto_off.xml
+new file mode 100644
+index 000000000000..4823216e91e2
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_qs_brightness_auto_off.xml
+@@ -0,0 +1,28 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2014 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="22dp"
++    android:height="22dp"
++    android:viewportWidth="22"
++    android:viewportHeight="22"
++    android:tint="?android:attr/textColorPrimary">
++
++    <path
++        android:pathData="M 19.31 8 L 19.31 3.31 L 14.62 3.31 L 11.31 0 L 8 3.31 L 3.31 3.31 L 3.31 8 L 0 11.31 L 3.31 14.62 L 3.31 19.31 L 8 19.31 L 11.31 22.62 L 14.62 19.31 L 19.31 19.31 L 19.31 14.62 L 22.62 11.31 Z M 2.83 11.31 L 5.31 8.83 L 5.31 5.31 L 8.83 5.31 L 11.31 2.83 L 13.79 5.31 L 15.68 5.31 L 12.93 8.06 L 12.31 6.31 L 10.31 6.31 L 7.9 13.09 L 5.31 15.68 L 5.31 13.79 Z M 12.46 11.96 L 11.71 11.96 L 12.28 11.39 Z M 10.68 10.31 L 11.31 8.31 L 11.64 9.31 Z M 17.31 13.79 L 17.31 17.31 L 13.79 17.31 L 11.31 19.79 L 8.83 17.31 L 6.36 17.31 L 8.36 15.31 L 9 15.31 L 9.35 14.31 L 10.35 13.31 L 12.9 13.31 L 13.6 15.31 L 15.5 15.31 L 13.63 10 L 17.31 6.32 L 17.31 8.83 L 19.79 11.31 Z"
++        android:fillColor="#ffffff"
++        android:strokeWidth="1"/>
++</vector>
+diff --git a/packages/SystemUI/res/drawable/ic_qs_brightness_auto_on.xml b/packages/SystemUI/res/drawable/ic_qs_brightness_auto_on.xml
+new file mode 100644
+index 000000000000..fd104d099385
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/ic_qs_brightness_auto_on.xml
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2014 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="36.0dip"
++    android:height="48.0dip"
++    android:viewportWidth="36.0"
++    android:viewportHeight="48.0"
++    android:tint="?android:attr/textColorPrimaryInverse">
++
++    <path android:fillColor="#FFFFFFFF"
++          android:pathData="m 17,19 -3.2,9 h 1.9 l 0.7,-2 h 3.2 l 0.7,2 h 1.9 L 19,19 Z M 16.85,24.65 18,21 19.15,24.65 Z M 26,20.69 V 16 H 21.31 L 18,12.69 14.69,16 H 10 v 4.69 L 6.69,24 10,27.31 V 32 h 4.69 L 18,35.31 21.31,32 H 26 V 27.31 L 29.31,24 Z m -2,5.79 V 30 H 20.48 L 18,32.48 15.52,30 H 12 V 26.48 L 9.52,24 12,21.52 V 18 h 3.52 L 18,15.52 20.48,18 H 24 v 3.52 L 26.48,24 Z" />
++</vector>
+diff --git a/packages/SystemUI/res/layout/quick_settings_brightness_dialog.xml b/packages/SystemUI/res/layout/quick_settings_brightness_dialog.xml
+index e95c6a79733c..f89ccb40ad04 100644
+--- a/packages/SystemUI/res/layout/quick_settings_brightness_dialog.xml
++++ b/packages/SystemUI/res/layout/quick_settings_brightness_dialog.xml
+@@ -13,20 +13,22 @@
+      See the License for the specific language governing permissions and
+      limitations under the License.
+ -->
+-    <com.android.systemui.settings.brightness.BrightnessSliderView
++<com.android.systemui.settings.brightness.BrightnessSliderView
+         xmlns:android="http://schemas.android.com/apk/res/android"
+         android:id="@+id/brightness_slider"
+         android:layout_width="match_parent"
+         android:layout_height="@dimen/brightness_mirror_height"
+         android:layout_gravity="center"
+         android:contentDescription="@string/accessibility_brightness"
++        android:orientation="horizontal"
+         android:importantForAccessibility="no" >
+ 
+         <com.android.systemui.settings.brightness.ToggleSeekBar
+             android:id="@+id/slider"
+-            android:layout_width="match_parent"
++            android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_gravity="center_vertical"
++            android:layout_weight="1"
+             android:minHeight="48dp"
+             android:thumb="@null"
+             android:background="@null"
+@@ -35,4 +37,15 @@
+             android:progressDrawable="@drawable/brightness_progress_drawable"
+             android:splitTrack="false"
+         />
+-    </com.android.systemui.settings.brightness.BrightnessSliderView>
++
++    <ImageButton
++        android:id="@+id/brightness_icon"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center_vertical"
++        android:background="@drawable/bg_qs_brightness_auto_on"
++        android:src="@drawable/ic_qs_brightness_auto_on"
++        android:contentDescription="@null"
++        android:layout_marginStart="8dp" />
++
++</com.android.systemui.settings.brightness.BrightnessSliderView>
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/QSPanelController.java b/packages/SystemUI/src/com/android/systemui/qs/QSPanelController.java
+index 001c740e310a..8024baf041c9 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/QSPanelController.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/QSPanelController.java
+@@ -116,7 +116,8 @@ public boolean onTouch(View v, MotionEvent event) {
+         mBrightnessSliderController = brightnessSliderFactory.create(getContext(), mView);
+         mView.setBrightnessView(mBrightnessSliderController.getRootView());
+ 
+-        mBrightnessController = brightnessControllerFactory.create(mBrightnessSliderController);
++        mBrightnessController = brightnessControllerFactory.create(
++                mBrightnessSliderController.getIconView(), mBrightnessSliderController);
+         mBrightnessMirrorHandler = new BrightnessMirrorHandler(mBrightnessController);
+     }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/QuickQSBrightnessController.kt b/packages/SystemUI/src/com/android/systemui/qs/QuickQSBrightnessController.kt
+index 65889d792769..d56ecb08a396 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/QuickQSBrightnessController.kt
++++ b/packages/SystemUI/src/com/android/systemui/qs/QuickQSBrightnessController.kt
+@@ -40,7 +40,7 @@ class QuickQSBrightnessController @VisibleForTesting constructor(
+                     quickQSPanel)
+             slider.init()
+             quickQSPanel.setBrightnessView(slider.rootView)
+-            brightnessControllerFactory.create(slider)
++            brightnessControllerFactory.create(slider.getIconView(), slider)
+         })
+ 
+     private var isListening = false
+diff --git a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
+index d7d1de00c82d..2a8c166062cb 100644
+--- a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
++++ b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
+@@ -41,11 +41,14 @@
+ import android.service.vr.IVrStateCallbacks;
+ import android.util.Log;
+ import android.util.MathUtils;
++import android.view.View;
++import android.widget.ImageView;
+ 
+ import com.android.internal.display.BrightnessSynchronizer;
+ import com.android.internal.logging.MetricsLogger;
+ import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
+ import com.android.settingslib.RestrictedLockUtilsInternal;
++import com.android.systemui.R;
+ import com.android.systemui.broadcast.BroadcastDispatcher;
+ import com.android.systemui.dagger.qualifiers.Background;
+ import com.android.systemui.settings.CurrentUserTracker;
+@@ -57,6 +60,7 @@ public class BrightnessController implements ToggleSlider.Listener, MirroredBrig
+     private static final String TAG = "StatusBar.BrightnessController";
+     private static final int SLIDER_ANIMATION_DURATION = 3000;
+ 
++    private static final int MSG_UPDATE_ICON = 0;
+     private static final int MSG_UPDATE_SLIDER = 1;
+     private static final int MSG_ATTACH_LISTENER = 2;
+     private static final int MSG_DETACH_LISTENER = 3;
+@@ -70,6 +74,9 @@ public class BrightnessController implements ToggleSlider.Listener, MirroredBrig
+     private final float mMinimumBacklightForVr;
+     private final float mMaximumBacklightForVr;
+ 
++    private final ImageView mIcon;
++    private boolean mAutomaticAvailable;
++
+     private final int mDisplayId;
+     private final Context mContext;
+     private final ToggleSlider mControl;
+@@ -216,6 +223,7 @@ public void run() {
+                     Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL,
+                     UserHandle.USER_CURRENT);
+             mAutomatic = automatic != Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL;
++            mHandler.obtainMessage(MSG_UPDATE_ICON, mAutomatic ? 1 : 0).sendToTarget();
+         }
+     };
+ 
+@@ -254,6 +262,9 @@ public void handleMessage(Message msg) {
+             mExternalChange = true;
+             try {
+                 switch (msg.what) {
++                    case MSG_UPDATE_ICON:
++                        updateIcon(mAutomatic);
++                        break;
+                     case MSG_UPDATE_SLIDER:
+                         updateSlider(Float.intBitsToFloat(msg.arg1), msg.arg2 != 0);
+                         break;
+@@ -277,10 +288,12 @@ public void handleMessage(Message msg) {
+ 
+     public BrightnessController(
+             Context context,
++            ImageView icon,
+             ToggleSlider control,
+             BroadcastDispatcher broadcastDispatcher,
+             @Background Handler bgHandler) {
+         mContext = context;
++        mIcon = icon;
+         mControl = control;
+         mControl.setMax(GAMMA_SPACE_MAX);
+         mBackgroundHandler = bgHandler;
+@@ -303,6 +316,26 @@ public void onUserSwitched(int newUserId) {
+         mDisplayManager = context.getSystemService(DisplayManager.class);
+         mVrManager = IVrManager.Stub.asInterface(ServiceManager.getService(
+                 Context.VR_SERVICE));
++        mAutomaticAvailable = context.getResources().getBoolean(
++                com.android.internal.R.bool.config_automatic_brightness_available);
++
++        if (mIcon != null) {
++            if (mAutomaticAvailable) {
++                mIcon.setOnClickListener(new View.OnClickListener() {
++                    @Override
++                    public void onClick(View v) {
++                        int newMode = mAutomatic ? Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL : Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC;
++                        setMode(newMode);
++                    }
++                });
++            }
++        }
++    }
++
++    private void setMode(int mode) {
++        Settings.System.putIntForUser(mContext.getContentResolver(),
++                Settings.System.SCREEN_BRIGHTNESS_MODE, mode,
++                mUserTracker.getCurrentUserId());
+     }
+ 
+     public void registerCallbacks() {
+@@ -381,6 +414,17 @@ private void setBrightness(float brightness) {
+         mDisplayManager.setTemporaryBrightness(mDisplayId, brightness);
+     }
+ 
++    private void updateIcon(boolean automatic) {
++        if (mIcon != null) {
++            mIcon.setImageResource(automatic ?
++                    R.drawable.ic_qs_brightness_auto_on :
++                    R.drawable.ic_qs_brightness_auto_off);
++            mIcon.setBackgroundResource(automatic ?
++                    R.drawable.bg_qs_brightness_auto_on :
++                    R.drawable.bg_qs_brightness_auto_off);
++        }
++    }
++
+     private void updateVrMode(boolean isEnabled) {
+         if (mIsVrModeEnabled != isEnabled) {
+             mIsVrModeEnabled = isEnabled;
+@@ -452,9 +496,10 @@ public Factory(
+         }
+ 
+         /** Create a {@link BrightnessController} */
+-        public BrightnessController create(ToggleSlider toggleSlider) {
++        public BrightnessController create(ImageView icon, ToggleSlider toggleSlider) {
+             return new BrightnessController(
+                     mContext,
++                    icon,
+                     toggleSlider,
+                     mBroadcastDispatcher,
+                     mBackgroundHandler);
+diff --git a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessDialog.java b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessDialog.java
+index c9c1a9b55c3f..60ea60f386de 100644
+--- a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessDialog.java
++++ b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessDialog.java
+@@ -81,8 +81,8 @@ protected void onCreate(Bundle savedInstanceState) {
+         controller.init();
+         frame.addView(controller.getRootView(), MATCH_PARENT, WRAP_CONTENT);
+ 
+-        mBrightnessController = new BrightnessController(
+-                this, controller, mBroadcastDispatcher, mBackgroundHandler);
++        mBrightnessController = new BrightnessController(this, controller.getIconView(),
++                controller, mBroadcastDispatcher, mBackgroundHandler);
+     }
+ 
+     @Override
+diff --git a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderController.java b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderController.java
+index 6c8190af27f7..6f6bbac54ddd 100644
+--- a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderController.java
++++ b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderController.java
+@@ -21,6 +21,7 @@
+ import android.view.MotionEvent;
+ import android.view.View;
+ import android.view.ViewGroup;
++import android.widget.ImageView;
+ import android.widget.SeekBar;
+ 
+ import androidx.annotation.Nullable;
+@@ -52,6 +53,7 @@ public class BrightnessSliderController extends ViewController<BrightnessSliderV
+     private BrightnessMirrorController mMirrorController;
+     private boolean mTracking;
+     private final FalsingManager mFalsingManager;
++    private ImageView mIconView;
+ 
+     private final Gefingerpoken mOnInterceptListener = new Gefingerpoken() {
+         @Override
+@@ -72,8 +74,10 @@ public boolean onTouchEvent(MotionEvent ev) {
+ 
+     BrightnessSliderController(
+             BrightnessSliderView brightnessSliderView,
++            ImageView icon,
+             FalsingManager falsingManager) {
+         super(brightnessSliderView);
++        mIconView = icon;
+         mFalsingManager = falsingManager;
+     }
+ 
+@@ -84,6 +88,9 @@ public View getRootView() {
+         return mView;
+     }
+ 
++    public ImageView getIconView() {
++        return mIconView;
++    }
+ 
+     @Override
+     protected void onViewAttached() {
+@@ -254,7 +261,8 @@ public BrightnessSliderController create(Context context, @Nullable ViewGroup vi
+             int layout = getLayout();
+             BrightnessSliderView root = (BrightnessSliderView) LayoutInflater.from(context)
+                     .inflate(layout, viewRoot, false);
+-            return new BrightnessSliderController(root, mFalsingManager);
++            ImageView icon = (ImageView) root.findViewById(R.id.brightness_icon);
++            return new BrightnessSliderController(root, icon, mFalsingManager);
+         }
+ 
+         /** Get the layout to inflate based on what slider to use */
+diff --git a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderView.java b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderView.java
+index 0e037ad56257..e0d3005b90f9 100644
+--- a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderView.java
++++ b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessSliderView.java
+@@ -25,6 +25,7 @@
+ import android.view.MotionEvent;
+ import android.view.View;
+ import android.widget.FrameLayout;
++import android.widget.LinearLayout;
+ import android.widget.SeekBar.OnSeekBarChangeListener;
+ 
+ import androidx.annotation.NonNull;
+@@ -38,7 +39,7 @@
+  * {@code FrameLayout} used to show and manipulate a {@link ToggleSeekBar}.
+  *
+  */
+-public class BrightnessSliderView extends FrameLayout {
++public class BrightnessSliderView extends LinearLayout {
+ 
+     @NonNull
+     private ToggleSeekBar mSlider;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+index b03bda78eebd..ab12181180e2 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBar.java
+@@ -1344,6 +1344,7 @@ public void hide() {
+                             .withDefault(this::createDefaultQSFragment)
+                             .build());
+             mBrightnessMirrorController = new BrightnessMirrorController(
++                    mContext,
+                     mNotificationShadeWindowView,
+                     mNotificationPanelViewController,
+                     mNotificationShadeDepthControllerLazy.get(),
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/BrightnessMirrorController.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/BrightnessMirrorController.java
+index 5bd20ff2d090..0102c571e1cc 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/BrightnessMirrorController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/BrightnessMirrorController.java
+@@ -19,11 +19,15 @@
+ import android.annotation.NonNull;
+ import android.content.Context;
+ import android.content.res.Resources;
++import android.content.ContentResolver;
++import android.os.UserHandle;
++import android.provider.Settings;
+ import android.util.ArraySet;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.FrameLayout;
++import android.widget.ImageView;
+ 
+ import com.android.systemui.R;
+ import com.android.systemui.settings.brightness.BrightnessSliderController;
+@@ -53,11 +57,15 @@
+     private int mBrightnessMirrorBackgroundPadding;
+     private int mLastBrightnessSliderWidth = -1;
+ 
+-    public BrightnessMirrorController(NotificationShadeWindowView statusBarWindow,
++    private ImageView mIcon;
++    private Context mContext;
++
++    public BrightnessMirrorController(Context context, NotificationShadeWindowView statusBarWindow,
+             NotificationPanelViewController notificationPanelViewController,
+             NotificationShadeDepthController notificationShadeDepthController,
+             BrightnessSliderController.Factory factory,
+             @NonNull Consumer<Boolean> visibilityCallback) {
++        mContext = context;
+         mStatusBarWindow = statusBarWindow;
+         mToggleSliderFactory = factory;
+         mBrightnessMirror = statusBarWindow.findViewById(R.id.brightness_mirror_container);
+@@ -68,9 +76,12 @@ public BrightnessMirrorController(NotificationShadeWindowView statusBarWindow,
+             mBrightnessMirror.setVisibility(View.INVISIBLE);
+         });
+         mVisibilityCallback = visibilityCallback;
++        mIcon = (ImageView) mBrightnessMirror.findViewById(R.id.brightness_icon);
++        mIcon.setVisibility(View.VISIBLE);
+     }
+ 
+     public void showMirror() {
++        updateIcon();
+         mBrightnessMirror.setVisibility(View.VISIBLE);
+         mVisibilityCallback.accept(true);
+         mNotificationPanel.setPanelAlpha(0, true /* animate */);
+@@ -178,4 +189,22 @@ public void onUiModeChanged() {
+     public interface BrightnessMirrorListener {
+         void onBrightnessMirrorReinflated(View brightnessMirror);
+     }
++
++    private void updateIcon() {
++        if (mIcon == null) {
++            return;
++        }
++        // enable the auto brightness icon
++        mIcon = (ImageView) mBrightnessMirror.findViewById(R.id.brightness_icon);
++        boolean automatic = Settings.System.getIntForUser(mContext.getContentResolver(),
++                Settings.System.SCREEN_BRIGHTNESS_MODE,
++                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL,
++                UserHandle.USER_CURRENT) != Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL;
++        mIcon.setImageResource(automatic ?
++                R.drawable.ic_qs_brightness_auto_on :
++                R.drawable.ic_qs_brightness_auto_off);
++        mIcon.setBackgroundResource(automatic ?
++                R.drawable.bg_qs_brightness_auto_on :
++                R.drawable.bg_qs_brightness_auto_off);
++    }
+ }
