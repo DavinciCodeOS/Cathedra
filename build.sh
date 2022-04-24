@@ -88,11 +88,21 @@ lunch aosp_davinci-$BUILD_TYPE
 echo "[i] Regenerating zlib ABI reference dumps for zlib-ng..."
 development/vndk/tools/header-checker/utils/create_reference_dumps.py --llndk -l libz -products aosp_davinci --build-variant $BUILD_TYPE
 
-echo "[i] Starting build process..."
+echo "[i] Starting build process for DavinciCodeOS..."
 
 make -j$THREAD_COUNT bacon
 
-echo "[i] Done"
+echo "[i] Done building DavinciCodeOS!"
+
+echo "[i] Preparing DavinciCodeOSX branding..."
+sed -i "s|DavinciCodeOS_|DavinciCodeOSX_|" vendor/aosp/config/branding.mk
+sed -i "s|DavinciCodeOS|DavinciCodeOSX|" build/tools/releasetools/edify_generator.py
+
+echo "[i] Starting build process for DavinciCodeOSX..."
+
+lunch aosp_davinci-$BUILD_TYPE
+
+make -j$THREAD_COUNT bacon
 
 if [ "$UPLOAD_TO_SF" = true ]; then
     bash /build/upload_release.sh
