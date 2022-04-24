@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest>
    <!-- Remotes -->
-   <remote name="gh" fetch="https://github.com/" />
+   <remote name="dcos-github" fetch="https://github.com/" />
+   <remote name="dcos-gitlab" fetch="https://gitlab.com/" />
 
    <!-- Remove existing repositories -->
    <remove-project name="platform/external/zlib" />
    <remove-project name="packages_apps_Updates" />
+   <remove-project name="packages_overlays_ThemeIcons" />
 
    <!-- Add new repositories -->
-   <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="gh" revision="12" />
-   <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/msm-4.14" remote="gh" revision="12.1" />
-   <project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="gh" revision="12" />
-   <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="gh" revision="12" />
-   <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="gh" revision="lineage-19.1" />
-   <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="gh" revision="sc-v2" />
-   <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="gh" revision="twelve" />
+   <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="dcos-github" revision="12" />
+   <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/msm-4.14" remote="dcos-github" revision="12.1" />
+   <project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="dcos-github" revision="12" />
+   <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="dcos-github" revision="12" />
+   <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="dcos-github" revision="lineage-19.1" />
+   <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="dcos-github" revision="sc-v2" />
+   <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="dcos-github" revision="twelve" />
+
+   <project path="packages/overlays/ThemedIcons" name="davincicodeos/packages_overlays_ThemedIcons" remote="dcos-gitlab" revision="12.1" />
 </manifest>
