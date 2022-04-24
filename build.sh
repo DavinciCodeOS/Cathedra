@@ -77,6 +77,8 @@ cd /build/android
 cd frameworks/base
 echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
 git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
+echo "[i] Applying 0007-fix-mediaprojection-crashes.patch"
+git am -3 /build/dcos/patches/0007-fix-mediaprojection-crashes.patch
 cd /build/android
 
 cd build/soong

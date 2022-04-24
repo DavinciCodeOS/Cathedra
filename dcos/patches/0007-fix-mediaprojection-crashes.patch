@@ -1,0 +1,41 @@
+From 9d24fafbe7036d8f87551b504044b7e771b8a085 Mon Sep 17 00:00:00 2001
+From: Pawit Pornkitprasan <p.pawit@gmail.com>
+Date: Sat, 20 Dec 2014 14:58:47 +0700
+Subject: [PATCH] SystemUI: fix MediaProjection cast crash
+
+Clicking on the "cast" icon of an app using the MediaProjection API will
+crash as the code assume that it is a device.
+
+java.lang.ClassCastException: android.media.projection.MediaProjectionInfo cannot be cast to android.media.MediaRouter$RouteInfo
+	at com.android.systemui.statusbar.policy.CastControllerImpl.startCasting(CastControllerImpl.java:177)
+	at com.android.systemui.qs.tiles.CastTile$CastDetailAdapter.onDetailItemClick(CastTile.java:237)
+	at com.android.systemui.qs.QSDetailItems$1.onClick(QSDetailItems.java:177)
+	at android.view.View.performClick(View.java:4756)
+	at android.view.View$PerformClick.run(View.java:19749)
+	at android.os.Handler.handleCallback(Handler.java:739)
+	at android.os.Handler.dispatchMessage(Handler.java:95)
+	at android.os.Looper.loop(Looper.java:135)
+	at android.app.ActivityThread.main(ActivityThread.java:5221)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at java.lang.reflect.Method.invoke(Method.java:372)
+	at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:898)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:693)
+
+Change-Id: Icfdf745c03da7bd1bbb228e06005f55324c1b8fa
+---
+ .../android/systemui/statusbar/policy/CastControllerImpl.java   | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/CastControllerImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/CastControllerImpl.java
+index 7bde31592965..1b94bac9701c 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/CastControllerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/CastControllerImpl.java
+@@ -196,7 +196,7 @@ public List<CastDevice> getCastDevices() {
+ 
+     @Override
+     public void startCasting(CastDevice device) {
+-        if (device == null || device.tag == null) return;
++        if (device == null || !(device.tag instanceof RouteInfo)) return;
+         final RouteInfo route = (RouteInfo) device.tag;
+         if (DEBUG) Log.d(TAG, "startCasting: " + routeToString(route));
+         mMediaRouter.selectRoute(ROUTE_TYPE_REMOTE_DISPLAY, route);
