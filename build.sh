@@ -108,6 +108,11 @@ echo "[i] Applying 0001-LockscreenCharging-squashed-1-3.patch"
 git am -3 /build/dcosx/patches/0001-LockscreenCharging-squashed-1-3.patch
 cd /build/android
 
+cd system/core
+echo "[i] Applying 0002-LockscreenCharging-squashed-2-3.patch"
+git am -3 /build/dcosx/patches/0002-LockscreenCharging-squashed-2-3.patch
+cd /build/android
+
 echo "[i] Starting build process for DavinciCodeOSX..."
 
 lunch aosp_davinci-$BUILD_TYPE
