@@ -103,6 +103,11 @@ echo "[i] Preparing DavinciCodeOSX branding..."
 sed -i "s|DavinciCodeOS_|DavinciCodeOSX_|" vendor/aosp/config/branding.mk
 sed -i "s|DavinciCodeOS|DavinciCodeOSX|" build/tools/releasetools/edify_generator.py
 
+cd frameworks/base
+echo "[i] Applying 0001-LockscreenCharging-squashed-1-3.patch"
+git am -3 /build/dcosx/patches/0001-LockscreenCharging-squashed-1-3.patch
+cd /build/android
+
 echo "[i] Starting build process for DavinciCodeOSX..."
 
 lunch aosp_davinci-$BUILD_TYPE
