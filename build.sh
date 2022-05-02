@@ -86,6 +86,9 @@ echo "[i] Applying 0006-soong-clang-builds-with-O3.patch"
 git am -3 /build/dcos/patches/0006-soong-clang-builds-with-O3.patch
 cd /build/android
 
+echo "[i] Installing boot animation..."
+cp -f /build/dcos/assets/bootanimation.zip vendor/aosp/bootanimation/bootanimation_1080.zip
+
 echo "[i] Setting build environment..."
 
 source build/envsetup.sh
