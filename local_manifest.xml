@@ -17,6 +17,7 @@
    <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="dcos-github" revision="lineage-19.1" />
    <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="dcos-github" revision="sc-v2" />
    <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="dcos-github" revision="twelve" />
+   <project path="system/memory/lmkd" name="YAAP/system_memory_lmkd" remote="dcos-github" revision="twelve" />
 
    <project path="packages/overlays/ThemedIcons" name="davincicodeos/packages_overlays_ThemedIcons" remote="dcos-gitlab" revision="12.1" />
 </manifest>
