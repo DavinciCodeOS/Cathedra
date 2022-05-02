@@ -86,6 +86,11 @@ echo "[i] Applying 0006-soong-clang-builds-with-O3.patch"
 git am -3 /build/dcos/patches/0006-soong-clang-builds-with-O3.patch
 cd /build/android
 
+cd bionic
+echo "[i] Applying 0008-libc-switch-to-jemalloc-from-scudo.patch"
+git am -3 /build/dcos/patches/0008-libc-switch-to-jemalloc-from-scudo.patch
+cd /build/android
+
 echo "[i] Installing boot animation..."
 cp -f /build/dcos/assets/bootanimation.zip vendor/aosp/bootanimation/bootanimation_1080.zip
 
