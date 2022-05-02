@@ -29,6 +29,7 @@ git config --global color.ui true # see https://groups.google.com/g/repo-discuss
 echo "[i] Setting up ccache..."
 
 export USE_CCACHE=1
+export CCACHE_EXEC=$(which ccache)
 mkdir -p /build/ccache
 export CCACHE_DIR="/build/ccache"
 ccache -M $CACHE_SIZE
