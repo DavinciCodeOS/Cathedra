@@ -121,6 +121,8 @@ echo "[i] Applying 0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.pat
 git am -3 /build/dcosx/patches/0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch
 echo "[i] Applying 0005-add-auto-brightness-button.patch"
 git am -3 /build/dcosx/patches/0005-add-auto-brightness-button.patch
+echo "[i] Applying 0006-fix-alarm-icon.patch"
+git am -3 /build/dcosx/patches/0006-fix-alarm-icon.patch
 cd /build/android
 
 cd system/core
