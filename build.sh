@@ -123,6 +123,8 @@ echo "[i] Applying 0005-add-auto-brightness-button.patch"
 git am -3 /build/dcosx/patches/0005-add-auto-brightness-button.patch
 echo "[i] Applying 0006-fix-alarm-icon.patch"
 git am -3 /build/dcosx/patches/0006-fix-alarm-icon.patch
+echo "[i] Applying 0007-allow-toggling-screen-off-fod-1-2.patch"
+git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-1-2.patch
 cd /build/android
 
 cd system/core
