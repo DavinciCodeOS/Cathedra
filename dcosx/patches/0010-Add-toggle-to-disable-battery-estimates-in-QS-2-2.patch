@@ -1,0 +1,44 @@
+From ef4a4f89d7370a0d0cb40ef76f5b2c13290ed3dd Mon Sep 17 00:00:00 2001
+From: SKULSHADY <anushekprasal@gmail.com>
+Date: Thu, 25 Nov 2021 01:07:41 +0700
+Subject: [PATCH 1/1] Add toggle to disable battery estimates in QS [2/2]
+
+Change-Id: I9e1f5b4de73a482894635fa1aa20a4bc13e020c5
+Signed-off-by: RakeshBatra <raakesh.batra@rediffmail.com>
+---
+ res/values/custom_strings.xml | 3 +++
+ res/xml/display_settings.xml  | 6 ++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index f462e7e329..378ebfcd73 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -117,4 +117,7 @@
+     <string name="screen_off_fod_title">Screen off FOD</string>
+     <string name="screen_off_fod_summary">Keep FOD enabled when the screen is off</string>
+ 
++    <!-- QS battery estimates -->
++    <string name="qs_show_battery_estimate_title">Battery estimates</string>
++    <string name="qs_show_battery_estimate_summary">Show estimated remaining battery life next to the icon. Needs SystemUI Restart</string>
+ </resources>
+diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
+index 5ae517a310..6498785542 100644
+--- a/res/xml/display_settings.xml
++++ b/res/xml/display_settings.xml
+@@ -70,6 +70,12 @@
+             android:title="@string/screen_zoom_title"
+             settings:keywords="@string/keywords_display_size" />
+ 
++	<com.android.settings.custom.preference.SystemSettingSwitchPreference
++            android:key="qs_show_battery_estimate"
++            android:title="@string/qs_show_battery_estimate_title"
++            android:summary="@string/qs_show_battery_estimate_summary"
++            android:defaultValue="true"/>
++
+     </PreferenceCategory>
+ 
+     <PreferenceCategory
+-- 
+2.35.3
+

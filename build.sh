@@ -125,6 +125,8 @@ echo "[i] Applying 0006-fix-alarm-icon.patch"
 git am -3 /build/dcosx/patches/0006-fix-alarm-icon.patch
 echo "[i] Applying 0007-allow-toggling-screen-off-fod-1-2.patch"
 git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-1-2.patch
+echo "[i} Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
+git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
 cd /build/android
 
 cd system/core
@@ -137,6 +139,8 @@ echo "[i] Applying 0003-LockscreenCharging-squashed-3-3.patch"
 git am -3 /build/dcosx/patches/0003-LockscreenCharging-squashed-3-3.patch
 echo "[i] Applying 0008-allow-toggling-screen-off-fod-2-2.patch"
 git am -3 /build/dcosx/patches/0008-allow-toggling-screen-off-fod-2-2.patch
+echo "[i] Applying 0010-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
+git am -3 /build/dcosx/patches/0010-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
 cd /build/android
 
 echo "[i] Starting build process for DavinciCodeOSX..."

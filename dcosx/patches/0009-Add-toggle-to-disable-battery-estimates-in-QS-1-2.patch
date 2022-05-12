@@ -1,0 +1,108 @@
+From de6b2e571daa318f475f523c22dd37000f88b2d7 Mon Sep 17 00:00:00 2001
+From: SKULSHADY <anushekprasal@gmail.com>
+Date: Sat, 6 Nov 2021 11:14:33 +0000
+Subject: [PATCH 1/1] SystemUI: Add toggle to disable battery estimates in QS
+ [1/2]
+
+Signed-off-by: chiru2000 <chiranthangadi123@gmail.com>
+Change-Id: I0cd26f039b82d383eb4f776a59623991c5635987
+Signed-off-by: spezi77 <spezi7713@gmx.net>
+---
+ core/java/android/provider/Settings.java          |  6 ++++++
+ .../systemui/battery/BatteryMeterView.java        | 15 ++++++++++++++-
+ .../battery/BatteryMeterViewController.java       |  8 ++++++++
+ 3 files changed, 28 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index b537fbf269de..c1affcaaca84 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -5435,6 +5435,12 @@ public final class Settings {
+          */
+         public static final String STATUS_BAR_CLOCK = "status_bar_clock";
+ 
++        /**
++         * Whether to show battery estimates in QS
++         * @hide
++         */
++        public static final String QS_SHOW_BATTERY_ESTIMATE = "qs_show_battery_estimate";
++
+         /**
+          * Display style of AM/PM next to clock in status bar
+          * 0: Normal display (Eclair stock)
+diff --git a/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterView.java b/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterView.java
+index 8c9d32d1bf2f..2ecf26f67dfd 100644
+--- a/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterView.java
++++ b/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterView.java
+@@ -92,6 +92,7 @@ public class BatteryMeterView extends LinearLayout implements DarkReceiver {
+     private boolean mBatteryStateUnknown;
+     // Lazily-loaded since this is expected to be a rare-if-ever state
+     private Drawable mUnknownStateDrawable;
++    private boolean mShowBatteryEstimate;
+ 
+     private int mBatteryStyle = BATTERY_STYLE_PORTRAIT;
+ 
+@@ -202,6 +203,17 @@ public class BatteryMeterView extends LinearLayout implements DarkReceiver {
+         return false;
+     }
+ 
++    public void updateSettings() {
++        updateQsBatteryEstimate();
++    }
++
++    private void updateQsBatteryEstimate() {
++        mShowBatteryEstimate = Settings.System.getIntForUser(mContext.getContentResolver(),
++                Settings.System.QS_SHOW_BATTERY_ESTIMATE, 1,
++                UserHandle.USER_CURRENT) == 1;
++        updatePercentView();
++    }
++
+     void onBatteryLevelChanged(int level, boolean pluggedIn) {
+         mCircleDrawable.setCharging(pluggedIn);
+         mThemedDrawable.setCharging(pluggedIn);
+@@ -255,7 +267,7 @@ public class BatteryMeterView extends LinearLayout implements DarkReceiver {
+         }
+ 
+         if (mBatteryPercentView != null) {
+-            if (mShowPercentMode == MODE_ESTIMATE && !mCharging) {
++            if (mShowPercentMode == MODE_ESTIMATE && !mCharging && mShowBatteryEstimate) {
+                 mBatteryEstimateFetcher.fetchBatteryTimeRemainingEstimate(
+                         (String estimate) -> {
+                     if (mBatteryPercentView == null) {
+@@ -409,6 +421,7 @@ public class BatteryMeterView extends LinearLayout implements DarkReceiver {
+     @Override
+     public void onDarkChanged(Rect area, float darkIntensity, int tint) {
+         float intensity = DarkIconDispatcher.isInArea(area, this) ? darkIntensity : 0;
++        updateSettings();
+         mNonAdaptedSingleToneColor = mDualToneHandler.getSingleColor(intensity);
+         mNonAdaptedForegroundColor = mDualToneHandler.getFillColor(intensity);
+         mNonAdaptedBackgroundColor = mDualToneHandler.getBackgroundColor(intensity);
+diff --git a/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterViewController.java b/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterViewController.java
+index 34480b594282..87b3d11960b0 100644
+--- a/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterViewController.java
++++ b/packages/SystemUI/src/com/android/systemui/battery/BatteryMeterViewController.java
+@@ -22,6 +22,7 @@ import android.content.ContentResolver;
+ import android.database.ContentObserver;
+ import android.net.Uri;
+ import android.os.Handler;
++import android.os.UserHandle;
+ import android.provider.Settings;
+ import android.text.TextUtils;
+ import android.util.ArraySet;
+@@ -198,6 +199,13 @@ public class BatteryMeterViewController extends ViewController<BatteryMeterView>
+             super(handler);
+         }
+ 
++        void observe() {
++            ContentResolver resolver = getContext().getContentResolver();
++            resolver.registerContentObserver(Settings.System.getUriFor(
++                    Settings.System.QS_SHOW_BATTERY_ESTIMATE),
++                    false, this, UserHandle.USER_ALL);
++        }
++
+         @Override
+         public void onChange(boolean selfChange, Uri uri) {
+             super.onChange(selfChange, uri);
+-- 
+2.35.3
+
