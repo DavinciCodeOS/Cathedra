@@ -1,38 +1,66 @@
-From 774a3f04d8ffce6b6cccd9b81912070882335e6f Mon Sep 17 00:00:00 2001
+From 20e8a53122ab15e34d8b2dac314e52061cf2b09e Mon Sep 17 00:00:00 2001
 From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
 Date: Mon, 2 May 2022 11:41:30 +0300
 Subject: [PATCH 1/1] libc: switch to jemalloc from scudo
 
 Change-Id: Ib2a9a295faff10a5848b7019acebcfe54fa92f66
 ---
- libc/Android.bp | 8 --------
- 1 file changed, 8 deletions(-)
+ libc/Android.bp | 28 ++--------------------------
+ 1 file changed, 2 insertions(+), 26 deletions(-)
 
 diff --git a/libc/Android.bp b/libc/Android.bp
-index 98b878151..8dbbe2fe4 100644
+index 98b878151..e88fad379 100644
 --- a/libc/Android.bp
 +++ b/libc/Android.bp
-@@ -121,9 +121,6 @@ cc_defaults {
-                 malloc_pattern_fill_contents: {
-                     cflags: ["-DSCUDO_PATTERN_FILL_CONTENTS"],
-                 },
+@@ -114,37 +114,16 @@ cc_defaults {
+ 
+     multilib: {
+         lib64: {
+-            product_variables: {
+-                malloc_zero_contents: {
+-                    cflags: ["-DSCUDO_ZERO_CONTENTS"],
+-                },
+-                malloc_pattern_fill_contents: {
+-                    cflags: ["-DSCUDO_PATTERN_FILL_CONTENTS"],
+-                },
 -                malloc_not_svelte: {
 -                    cflags: ["-DUSE_SCUDO"],
 -                },
-             },
+-            },
++            product_variables: {},
          },
          lib32: {
-@@ -134,9 +131,6 @@ cc_defaults {
-                 malloc_pattern_fill_contents: {
-                     cflags: ["-DSCUDO_PATTERN_FILL_CONTENTS"],
-                 },
+-            product_variables: {
+-                malloc_zero_contents: {
+-                    cflags: ["-DSCUDO_ZERO_CONTENTS"],
+-                },
+-                malloc_pattern_fill_contents: {
+-                    cflags: ["-DSCUDO_PATTERN_FILL_CONTENTS"],
+-                },
 -                malloc_not_svelte_libc32: {
 -                    cflags: ["-DUSE_SCUDO"],
 -                },
-             },
+-            },
++            product_variables: {},
          },
      },
-@@ -181,10 +175,8 @@ cc_defaults {
+ }
+ 
+ libc_scudo_product_variables = {
+     malloc_not_svelte: {
+-        cflags: ["-DUSE_SCUDO"],
+         whole_static_libs: ["libscudo"],
+         exclude_static_libs: [
+             "libjemalloc5",
+@@ -155,7 +134,6 @@ libc_scudo_product_variables = {
+ 
+ libc32_scudo_product_variables = {
+     malloc_not_svelte_libc32: {
+-        cflags: ["-DUSE_SCUDO"],
+         whole_static_libs: ["libscudo"],
+         exclude_static_libs: [
+             "libjemalloc5",
+@@ -181,10 +159,8 @@ cc_defaults {
      header_libs: ["gwp_asan_headers"],
      multilib: {
          lib64: {
@@ -44,5 +72,5 @@ index 98b878151..8dbbe2fe4 100644
      },
  }
 -- 
-2.35.1
+2.35.3
 
