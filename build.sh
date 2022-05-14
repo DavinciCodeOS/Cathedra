@@ -123,8 +123,16 @@ echo "[i] Applying 0005-add-auto-brightness-button.patch"
 git am -3 /build/dcosx/patches/0005-add-auto-brightness-button.patch
 echo "[i] Applying 0006-allow-toggling-screen-off-fod-1-2.patch"
 git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-1-2.patch
-echo "[i} Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
+echo "[i] Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
 git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
+echo "[i] Applying 0010-support-new-special-runtime-permissions.patch"
+git am -3 /build/dcosx/patches/0010-support-new-special-runtime-permissions.patch
+echo "[i] Applying 0011-make-INTERNET-into-a-special-runtime-permission.patch"
+git am -3 /build/dcosx/patches/0011-make-INTERNET-into-a-special-runtime-permission.patch
+echo "[i] Applying 0012-add-a-NETWORK-permission-group-for-INTERNET.patch"
+git am -3 /build/dcosx/patches/0012-add-a-NETWORK-permission-group-for-INTERNET.patch
+echo "[i] Applying 0013-add-special-runtime-permission-for-other-sensors.patch"
+git am -3 /build/dcosx/patches/0013-add-special-runtime-permission-for-other-sensors.patch
 cd /build/android
 
 cd system/core
