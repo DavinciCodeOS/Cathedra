@@ -78,8 +78,8 @@ cd /build/android
 cd frameworks/base
 echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
 git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
-echo "[i] Applying 0007-fix-mediaprojection-crashes.patch"
-git am -3 /build/dcos/patches/0007-fix-mediaprojection-crashes.patch
+echo "[i] Applying 0007-core-jni-Switch-to-O3.patch"
+git am -3 /build/dcos/patches/0007-core-jni-Switch-to-O3.patch
 cd /build/android
 
 cd build/soong
@@ -121,11 +121,9 @@ echo "[i] Applying 0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.pat
 git am -3 /build/dcosx/patches/0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch
 echo "[i] Applying 0005-add-auto-brightness-button.patch"
 git am -3 /build/dcosx/patches/0005-add-auto-brightness-button.patch
-echo "[i] Applying 0006-fix-alarm-icon.patch"
-git am -3 /build/dcosx/patches/0006-fix-alarm-icon.patch
-echo "[i] Applying 0007-allow-toggling-screen-off-fod-1-2.patch"
+echo "[i] Applying 0006-allow-toggling-screen-off-fod-1-2.patch"
 git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-1-2.patch
-echo "[i} Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
+echo "[i} Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
 git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
 cd /build/android
 
@@ -137,9 +135,9 @@ cd /build/android
 cd packages/apps/Settings
 echo "[i] Applying 0003-LockscreenCharging-squashed-3-3.patch"
 git am -3 /build/dcosx/patches/0003-LockscreenCharging-squashed-3-3.patch
-echo "[i] Applying 0008-allow-toggling-screen-off-fod-2-2.patch"
+echo "[i] Applying 0007-allow-toggling-screen-off-fod-2-2.patch"
 git am -3 /build/dcosx/patches/0008-allow-toggling-screen-off-fod-2-2.patch
-echo "[i] Applying 0010-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
+echo "[i] Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
 git am -3 /build/dcosx/patches/0010-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
 cd /build/android
 
