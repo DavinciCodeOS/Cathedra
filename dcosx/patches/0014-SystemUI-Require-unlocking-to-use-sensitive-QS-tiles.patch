@@ -1,0 +1,265 @@
+From 39fceebb991f46e855d906e0b9fb2614f9adb46b Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Tue, 5 Oct 2021 21:01:09 -0700
+Subject: [PATCH 1/1] SystemUI: Require unlocking to use sensitive QS tiles
+
+- Battery saver
+- Bluetooth
+- NFC
+- Rotation lock
+
+This is the same idea as the following commits from GrapheneOS, but
+simplified to reduce changes made to each individual QS tile:
+
+commit 4b7c9559dfba84e10142fcd53b3edac9c75b0748
+Author: inthewaves <inthewaves@pm.me>
+Date:   Thu Sep 10 17:21:16 2020 -0700
+
+    require unlocking to use battery saver tile
+
+commit cf84259708f9bf650c8494e16025725b1bfa5e23
+Author: inthewaves <inthewaves@pm.me>
+Date:   Thu Sep 10 17:11:58 2020 -0700
+
+    require unlocking to use rotation lock quick tile
+
+commit a3686b6f905fb734b3a4f6db545e8a3ef3fc3cc7
+Author: inthewaves <inthewaves@pm.me>
+Date:   Thu Sep 10 17:02:20 2020 -0700
+
+    require unlocking to use Bluetooth quick tile
+
+commit 3046535a40f53835eb0b57d4c12a29828ba90f30
+Author: inthewaves <inthewaves@pm.me>
+Date:   Thu Sep 10 16:47:59 2020 -0700
+
+    require unlocking to use NFC quick tile
+
+Change-Id: I515f4bdd30f84a4a76f4807afcf3cc5a3ce42fa9
+Signed-off-by: DennySPb <dennyspb@gmail.com>
+---
+ .../systemui/qs/tiles/BatterySaverTile.java        | 14 ++++++++++----
+ .../android/systemui/qs/tiles/BluetoothTile.java   | 14 ++++++++++----
+ .../src/com/android/systemui/qs/tiles/NfcTile.java | 14 ++++++++++----
+ .../systemui/qs/tiles/RotationLockTile.java        | 14 ++++++++++----
+ .../systemui/qs/tiles/BatterySaverTileGoogle.java  |  7 ++++---
+ 5 files changed, 44 insertions(+), 19 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
+index e3024fa0eddc..f68572bc3e75 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
+@@ -40,11 +40,12 @@ import com.android.systemui.qs.SecureSetting;
+ import com.android.systemui.qs.logging.QSLogger;
+ import com.android.systemui.qs.tileimpl.QSTileImpl;
+ import com.android.systemui.statusbar.policy.BatteryController;
++import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.util.settings.SecureSettings;
+ 
+ import javax.inject.Inject;
+ 
+-public class BatterySaverTile extends QSTileImpl<BooleanState> implements
++public class BatterySaverTile extends SecureQSTile<BooleanState> implements
+         BatteryController.BatteryStateChangeCallback {
+ 
+     private final BatteryController mBatteryController;
+@@ -69,10 +70,11 @@ public class BatterySaverTile extends QSTileImpl<BooleanState> implements
+             ActivityStarter activityStarter,
+             QSLogger qsLogger,
+             BatteryController batteryController,
+-            SecureSettings secureSettings
++            SecureSettings secureSettings,
++            KeyguardStateController keyguardStateController
+     ) {
+         super(host, backgroundLooper, mainHandler, falsingManager, metricsLogger,
+-                statusBarStateController, activityStarter, qsLogger);
++                statusBarStateController, activityStarter, qsLogger, keyguardStateController);
+         mBatteryController = batteryController;
+         mBatteryController.observe(getLifecycle(), this);
+         int currentUser = host.getUserContext().getUserId();
+@@ -123,7 +125,11 @@ public class BatterySaverTile extends QSTileImpl<BooleanState> implements
+     }
+ 
+     @Override
+-    protected void handleClick(@Nullable View view) {
++    protected void handleClick(@Nullable View view, boolean keyguardShowing) {
++        if (checkKeyguard(view, keyguardShowing)) {
++            return;
++        }
++
+         if (getState().state == Tile.STATE_UNAVAILABLE) {
+             return;
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/BluetoothTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/BluetoothTile.java
+index 65b6617c5a25..7c24a8c9c10e 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/BluetoothTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/BluetoothTile.java
+@@ -53,6 +53,7 @@ import com.android.systemui.qs.QSHost;
+ import com.android.systemui.qs.logging.QSLogger;
+ import com.android.systemui.qs.tileimpl.QSTileImpl;
+ import com.android.systemui.statusbar.policy.BluetoothController;
++import com.android.systemui.statusbar.policy.KeyguardStateController;
+ 
+ import java.util.ArrayList;
+ import java.util.Collection;
+@@ -61,7 +62,7 @@ import java.util.List;
+ import javax.inject.Inject;
+ 
+ /** Quick settings tile: Bluetooth **/
+-public class BluetoothTile extends QSTileImpl<BooleanState> {
++public class BluetoothTile extends SecureQSTile<BooleanState> {
+     private static final Intent BLUETOOTH_SETTINGS = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+ 
+     private final BluetoothController mController;
+@@ -77,10 +78,11 @@ public class BluetoothTile extends QSTileImpl<BooleanState> {
+             StatusBarStateController statusBarStateController,
+             ActivityStarter activityStarter,
+             QSLogger qsLogger,
+-            BluetoothController bluetoothController
++            BluetoothController bluetoothController,
++            KeyguardStateController keyguardStateController
+     ) {
+         super(host, backgroundLooper, mainHandler, falsingManager, metricsLogger,
+-                statusBarStateController, activityStarter, qsLogger);
++                statusBarStateController, activityStarter, qsLogger, keyguardStateController);
+         mController = bluetoothController;
+         mDetailAdapter = (BluetoothDetailAdapter) createDetailAdapter();
+         mController.observe(getLifecycle(), mCallback);
+@@ -97,7 +99,11 @@ public class BluetoothTile extends QSTileImpl<BooleanState> {
+     }
+ 
+     @Override
+-    protected void handleClick(@Nullable View view) {
++    protected void handleClick(@Nullable View view, boolean keyguardShowing) {
++        if (checkKeyguard(view, keyguardShowing)) {
++            return;
++        }
++
+         // Secondary clicks are header clicks, just toggle.
+         final boolean isEnabled = mState.value;
+         // Immediately enter transient enabling state when turning bluetooth on.
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/NfcTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/NfcTile.java
+index 077432d32de8..c8b2ec48ceaa 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/NfcTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/NfcTile.java
+@@ -45,11 +45,12 @@ import com.android.systemui.plugins.statusbar.StatusBarStateController;
+ import com.android.systemui.qs.QSHost;
+ import com.android.systemui.qs.logging.QSLogger;
+ import com.android.systemui.qs.tileimpl.QSTileImpl;
++import com.android.systemui.statusbar.policy.KeyguardStateController;
+ 
+ import javax.inject.Inject;
+ 
+ /** Quick settings tile: Enable/Disable NFC **/
+-public class NfcTile extends QSTileImpl<BooleanState> {
++public class NfcTile extends SecureQSTile<BooleanState> {
+ 
+     private static final String NFC = "nfc";
+     private final Icon mIcon = ResourceIcon.get(R.drawable.ic_qs_nfc);
+@@ -69,10 +70,11 @@ public class NfcTile extends QSTileImpl<BooleanState> {
+             StatusBarStateController statusBarStateController,
+             ActivityStarter activityStarter,
+             QSLogger qsLogger,
+-            BroadcastDispatcher broadcastDispatcher
++            BroadcastDispatcher broadcastDispatcher,
++            KeyguardStateController keyguardStateController
+     ) {
+         super(host, backgroundLooper, mainHandler, falsingManager, metricsLogger,
+-                statusBarStateController, activityStarter, qsLogger);
++                statusBarStateController, activityStarter, qsLogger, keyguardStateController);
+         mBroadcastDispatcher = broadcastDispatcher;
+     }
+ 
+@@ -115,7 +117,11 @@ public class NfcTile extends QSTileImpl<BooleanState> {
+     }
+ 
+     @Override
+-    protected void handleClick(@Nullable View view) {
++    protected void handleClick(@Nullable View view, boolean keyguardShowing) {
++        if (checkKeyguard(view, keyguardShowing)) {
++            return;
++        }
++
+         if (getAdapter() == null) {
+             return;
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/RotationLockTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/RotationLockTile.java
+index 0bbb5bdd851a..c28d09f80f74 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/RotationLockTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/RotationLockTile.java
+@@ -40,13 +40,14 @@ import com.android.systemui.plugins.statusbar.StatusBarStateController;
+ import com.android.systemui.qs.QSHost;
+ import com.android.systemui.qs.logging.QSLogger;
+ import com.android.systemui.qs.tileimpl.QSTileImpl;
++import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.statusbar.policy.RotationLockController;
+ import com.android.systemui.statusbar.policy.RotationLockController.RotationLockControllerCallback;
+ 
+ import javax.inject.Inject;
+ 
+ /** Quick settings tile: Rotation **/
+-public class RotationLockTile extends QSTileImpl<BooleanState> {
++public class RotationLockTile extends SecureQSTile<BooleanState> {
+ 
+     private final Icon mIcon = ResourceIcon.get(com.android.internal.R.drawable.ic_qs_auto_rotate);
+     private final RotationLockController mController;
+@@ -61,10 +62,11 @@ public class RotationLockTile extends QSTileImpl<BooleanState> {
+             StatusBarStateController statusBarStateController,
+             ActivityStarter activityStarter,
+             QSLogger qsLogger,
+-            RotationLockController rotationLockController
++            RotationLockController rotationLockController,
++            KeyguardStateController keyguardStateController
+     ) {
+         super(host, backgroundLooper, mainHandler, falsingManager, metricsLogger,
+-                statusBarStateController, activityStarter, qsLogger);
++                statusBarStateController, activityStarter, qsLogger, keyguardStateController);
+         mController = rotationLockController;
+         mController.observe(this, mCallback);
+     }
+@@ -80,7 +82,11 @@ public class RotationLockTile extends QSTileImpl<BooleanState> {
+     }
+ 
+     @Override
+-    protected void handleClick(@Nullable View view) {
++    protected void handleClick(@Nullable View view, boolean keyguardShowing) {
++        if (checkKeyguard(view, keyguardShowing)) {
++            return;
++        }
++
+         final boolean newState = !mState.value;
+         mController.setRotationLocked(!newState);
+         refreshState(newState);
+diff --git a/packages/SystemUI/src/org/pixelexperience/systemui/qs/tiles/BatterySaverTileGoogle.java b/packages/SystemUI/src/org/pixelexperience/systemui/qs/tiles/BatterySaverTileGoogle.java
+index 975278c2f4b0..366e767aea14 100644
+--- a/packages/SystemUI/src/org/pixelexperience/systemui/qs/tiles/BatterySaverTileGoogle.java
++++ b/packages/SystemUI/src/org/pixelexperience/systemui/qs/tiles/BatterySaverTileGoogle.java
+@@ -14,6 +14,7 @@ import com.android.systemui.plugins.FalsingManager;
+ import com.android.systemui.plugins.qs.QSTile;
+ import com.android.systemui.plugins.statusbar.StatusBarStateController;
+ import com.android.systemui.statusbar.policy.BatteryController;
++import com.android.systemui.statusbar.policy.KeyguardStateController;
+ import com.android.systemui.util.settings.SecureSettings;
+ 
+ import javax.inject.Inject;
+@@ -22,8 +23,8 @@ public class BatterySaverTileGoogle extends BatterySaverTile {
+     private boolean mExtreme;
+ 
+     @Inject
+-    public BatterySaverTileGoogle(QSHost qSHost, @Background Looper looper, @Main Handler handler, FalsingManager falsingManager, MetricsLogger metricsLogger, StatusBarStateController statusBarStateController, ActivityStarter activityStarter, QSLogger qSLogger, BatteryController batteryController, SecureSettings secureSettings) {
+-        super(qSHost, looper, handler, falsingManager, metricsLogger, statusBarStateController, activityStarter, qSLogger, batteryController, secureSettings);
++    public BatterySaverTileGoogle(QSHost qSHost, @Background Looper looper, @Main Handler handler, FalsingManager falsingManager, MetricsLogger metricsLogger, StatusBarStateController statusBarStateController, ActivityStarter activityStarter, QSLogger qSLogger, BatteryController batteryController, SecureSettings secureSettings, KeyguardStateController keyguardStateController) {
++        super(qSHost, looper, handler, falsingManager, metricsLogger, statusBarStateController, activityStarter, qSLogger, batteryController, secureSettings, keyguardStateController);
+     }
+ 
+     @Override
+@@ -44,4 +45,4 @@ public class BatterySaverTileGoogle extends BatterySaverTile {
+             refreshState();
+         }
+     }
+-}
+\ No newline at end of file
++}
+-- 
+2.35.3
+
