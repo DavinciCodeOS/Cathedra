@@ -1,4 +1,4 @@
-From 3f547b105c5ca05eb5c969de4aeb601b1ce5bad6 Mon Sep 17 00:00:00 2001
+From 885ea6adc816d79e937829d30a56b0eca159e69a Mon Sep 17 00:00:00 2001
 From: xyyx <xyyx@mail.ru>
 Date: Sat, 13 Nov 2021 22:56:37 +0100
 Subject: [PATCH 1/1] LockscreenCharging: squashed (3/3)
@@ -23,11 +23,11 @@ index 300b3a4201..d3ba1c3088 100644
 +    <string name="lockscreen_battery_info_summary">Show charging current, voltage, wattage and battery temperature on lockscreen while charging</string>
  </resources>
 diff --git a/res/xml/security_lockscreen_settings.xml b/res/xml/security_lockscreen_settings.xml
-index 25bf656447..d4f939ed68 100644
+index 50bffe38fc..83f9442df2 100644
 --- a/res/xml/security_lockscreen_settings.xml
 +++ b/res/xml/security_lockscreen_settings.xml
-@@ -66,6 +66,12 @@
-             android:title="@string/lockscreen_visualizer_title"
+@@ -61,6 +61,12 @@
+             android:title="@string/lockscreen_media_art_title"
              android:defaultValue="false" />
  
 +        <com.android.settings.custom.preference.SystemSettingSwitchPreference
@@ -40,5 +40,5 @@ index 25bf656447..d4f939ed68 100644
              android:key="lockscreen_privacy_wallet_switch"
              android:title="@string/lockscreen_privacy_wallet_setting_toggle"
 -- 
-2.35.1
+2.35.3
 
