@@ -1,4 +1,4 @@
-From a791f87075e6f717fe5cc4e66b9122b161713a71 Mon Sep 17 00:00:00 2001
+From 3bb378569dbc1d0538a881b713907a456d5abb6b Mon Sep 17 00:00:00 2001
 From: jhonboy121 <alfredmathew05@gmail.com>
 Date: Tue, 1 Feb 2022 19:54:15 +0530
 Subject: [PATCH 1/1] base: introduce app lock [1/4]
@@ -12,7 +12,7 @@ Change-Id: Ib2565f5707d31a5d9776b6751ff472f3a13420ba
  core/java/android/content/Context.java        |   9 +
  .../notification/StatusBarNotification.java   |  31 +-
  core/res/AndroidManifest.xml                  |   8 +
- core/res/res/values/custom_config.xml         |   5 +
+ core/res/res/values/custom_config.xml         |   4 +
  core/res/res/values/custom_strings.xml        |   4 +-
  core/res/res/values/custom_symbols.xml        |   4 +
  .../NotificationViewHierarchyManager.java     |   6 +-
@@ -34,7 +34,7 @@ Change-Id: Ib2565f5707d31a5d9776b6751ff472f3a13420ba
  .../wm/ActivityTaskManagerInternal.java       |   2 +
  .../server/wm/ActivityTaskManagerService.java |  60 +-
  .../java/com/android/server/SystemServer.java |   7 +
- 28 files changed, 1833 insertions(+), 27 deletions(-)
+ 28 files changed, 1832 insertions(+), 27 deletions(-)
  create mode 100644 core/java/android/app/AppLockManager.java
  create mode 100644 core/java/android/app/IAppLockManagerService.aidl
  create mode 100644 services/core/java/com/android/server/app/AppLockConfig.kt
@@ -414,7 +414,7 @@ index 40041486f6a6..01e94908948b 100644
 +    }
  }
 diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
-index 5e932fdde934..6b9039ecd73c 100644
+index efdf150ba936..da2c8d3d9ea7 100644
 --- a/core/res/AndroidManifest.xml
 +++ b/core/res/AndroidManifest.xml
 @@ -708,6 +708,9 @@
@@ -427,7 +427,7 @@ index 5e932fdde934..6b9039ecd73c 100644
      <!-- Used to force the state of battery led -->
      <protected-broadcast android:name="android.intent.action.BATTERY_LED_STATE_OVERRIDE" />
  
-@@ -5857,6 +5860,11 @@
+@@ -5837,6 +5840,11 @@
      <permission android:name="android.permission.READ_GLOBAL_APP_SEARCH_DATA"
                  android:protectionLevel="internal|role" />
  
@@ -440,17 +440,16 @@ index 5e932fdde934..6b9039ecd73c 100644
      <attribution android:tag="GeofencingService" android:label="@string/geofencing_service"/>
      <!-- Attribution for Country Detector. -->
 diff --git a/core/res/res/values/custom_config.xml b/core/res/res/values/custom_config.xml
-index 0226493e488a..3c8c61058c68 100644
+index 9b5b7a6b38a9..7bb6cf91b839 100644
 --- a/core/res/res/values/custom_config.xml
 +++ b/core/res/res/values/custom_config.xml
-@@ -193,4 +193,9 @@
-     <!-- Whether to allow network traffic on statusbar -->
-     <bool name="config_supportsNetworkTrafficOnStatusBar">true</bool>
+@@ -196,4 +196,8 @@
+     <!-- Whether devices suports in-display fingerprint when screen is off -->
+     <bool name="config_supportsScreenOffUdfps">true</bool>
  
-+
-+     <!-- List of system apps that are allowed to be locked with app lock.
-+          Use with extreme caution. -->
-+     <string-array name="config_appLockAllowedSystemApps" translatable="false" />
++    <!-- List of system apps that are allowed to be locked with app lock.
++         Use with extreme caution. -->
++    <string-array name="config_appLockAllowedSystemApps" translatable="false" />
 +
  </resources>
 diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
@@ -466,12 +465,12 @@ index 10f9ec0d8771..ae4dd0282394 100644
 +    <string name="unlock_application">Unlock <xliff:g id="label" example="Telegram">%1$s</xliff:g></string>
  </resources>
 diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
-index 183ee1545f30..926441d2e118 100644
+index b24e81606c7d..2c3597ae4c92 100644
 --- a/core/res/res/values/custom_symbols.xml
 +++ b/core/res/res/values/custom_symbols.xml
-@@ -101,4 +101,8 @@
-     <!-- Whether to allow network traffic on statusbar -->
-     <java-symbol type="bool" name="config_supportsNetworkTrafficOnStatusBar" />
+@@ -104,4 +104,8 @@
+     <!-- Whether devices suports in-display fingerprint when screen is off -->
+     <java-symbol type="bool" name="config_supportsScreenOffUdfps" />
  
 +    <!-- App lock -->
 +    <java-symbol type="string" name="unlock_application" />
