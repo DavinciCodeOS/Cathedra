@@ -47,57 +47,7 @@ echo "[i] Fetching sources, hang tight... This might take a while."
 # when pulling sources with more than 16 threads, 429 errors occur often, 16 seems to be fine
 repo sync -c --jobs-network=$(( $THREAD_COUNT < 16 ? $THREAD_COUNT : 16 )) -j$THREAD_COUNT --jobs-checkout=$THREAD_COUNT --force-sync --no-clone-bundle --no-tags
 
-echo "[i] Fetching latest Adrian Clang build for the kernel build..."
-# fresh clang toolchain by Adrian
-mkdir -p prebuilts/clang/host/linux-x86/adrian-clang
-cd prebuilts/clang/host/linux-x86/adrian-clang
-# in case of automated builds, please host a mirror
-curl https://ftp.travitia.xyz/clang/clang-latest.tar.xz | tar -xJ
-cd /build/android
-
-echo "[i] Cloning is done. Patching sources..."
-
-cd system/core
-echo "[i] Applying 0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch"
-# the change would otherwise break vbmeta loading and result in no wlan, ril etc
-git am -3 /build/dcos/patches/0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch
-cd /build/android
-
-cd vendor/aosp
-echo "[i] Applying 0002-vendor-davincicodeos-rebrand.patch"
-git am -3 /build/dcos/patches/0002-vendor-davincicodeos-rebrand.patch
-echo "[i] Applying 0005-vendor-fix-themedicons-path.patch"
-git am -3 /build/dcos/patches/0005-vendor-fix-themedicons-path.patch
-cd /build/android
-
-cd build/tools
-echo "[i] Applying 0003-releasetools-rebrand-to-davincicodeos.patch"
-git am -3 /build/dcos/patches/0003-releasetools-rebrand-to-davincicodeos.patch
-cd /build/android
-
-cd frameworks/base
-echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
-git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
-echo "[i] Applying 0007-core-jni-Switch-to-O3.patch"
-git am -3 /build/dcos/patches/0007-core-jni-Switch-to-O3.patch
-echo "[i] Applying 0009-base-whitelist-a-few-services-to-location-indicator.patch"
-git am -3 /build/dcos/patches/0009-base-whitelist-a-few-services-to-location-indicator.patch
-echo "[i] Applying 0010-add-google-search-and-google-location-history-to-location.patch"
-git am -3 /build/dcos/patches/0010-add-google-search-and-google-location-history-to-location.patch
-cd /build/android
-
-cd build/soong
-echo "[i] Applying 0006-soong-clang-builds-with-O3.patch"
-git am -3 /build/dcos/patches/0006-soong-clang-builds-with-O3.patch
-cd /build/android
-
-cd bionic
-echo "[i] Applying 0008-libc-switch-to-jemalloc-from-scudo.patch"
-git am -3 /build/dcos/patches/0008-libc-switch-to-jemalloc-from-scudo.patch
-cd /build/android
-
-echo "[i] Installing boot animation..."
-cp -f /build/dcos/assets/bootanimation.zip vendor/aosp/bootanimation/bootanimation_1080.zip
+/build/apply.sh dcos
 
 echo "[i] Setting build environment..."
 
@@ -114,50 +64,7 @@ make -j$THREAD_COUNT bacon
 
 echo "[i] Done building DavinciCodeOS!"
 
-echo "[i] Preparing DavinciCodeOSX branding..."
-sed -i "s|DavinciCodeOS_|DavinciCodeOSX_|" vendor/aosp/config/branding.mk
-sed -i "s|DavinciCodeOS|DavinciCodeOSX|" build/tools/releasetools/edify_generator.py
-
-cd frameworks/base
-echo "[i] Applying 0001-LockscreenCharging-squashed-1-3.patch"
-git am -3 /build/dcosx/patches/0001-LockscreenCharging-squashed-1-3.patch
-echo "[i] Applying 0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch"
-git am -3 /build/dcosx/patches/0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch
-echo "[i] Applying 0006-allow-toggling-screen-off-fod-1-2.patch"
-git am -3 /build/dcosx/patches/0006-allow-toggling-screen-off-fod-1-2.patch
-echo "[i] Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
-git am -3 /build/dcosx/patches/0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
-echo "[i] Applying 0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch"
-git am -3 /build/dcosx/patches/0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch
-echo "[i] Applying 0015-base-introduce-app-lock-1-4.patch"
-git am -3 /build/dcosx/patches/0015-base-introduce-app-lock-1-4.patch
-cd /build/android
-
-cd system/core
-echo "[i] Applying 0002-LockscreenCharging-squashed-2-3.patch"
-git am -3 /build/dcosx/patches/0002-LockscreenCharging-squashed-2-3.patch
-cd /build/android
-
-cd vendor/aosp
-echo "[i] Applying 0018-vendor-introduce-app-lock-4-4.patch"
-git am -3 /build/dcosx/patches/0018-vendor-introduce-app-lock-4-4.patch
-cd /build/android
-
-cd packages/apps/Settings
-echo "[i] Applying 0003-LockscreenCharging-squashed-3-3.patch"
-git am -3 /build/dcosx/patches/0003-LockscreenCharging-squashed-3-3.patch
-echo "[i] Applying 0007-allow-toggling-screen-off-fod-2-2.patch"
-git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-2-2.patch
-echo "[i] Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
-git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
-echo "[i] Applying 0017-Settings-introduce-app-lock-3-4.patch"
-git am -3 /build/dcosx/patches/0017-Settings-introduce-app-lock-3-4.patch
-cd /build/android
-
-cd device/custom/sepolicy
-echo "[i] Applying 0016-sepolicy-introduce-app-lock-2-4.patch"
-git am -3 /build/dcosx/patches/0016-sepolicy-introduce-app-lock-2-4.patch
-cd /build/android
+/build/apply.sh dcosx
 
 echo "[i] Starting build process for DavinciCodeOSX..."
 
