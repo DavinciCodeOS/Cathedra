@@ -80,6 +80,8 @@ echo "[i] Applying 0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch"
 git am -3 /build/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
 echo "[i] Applying 0007-core-jni-Switch-to-O3.patch"
 git am -3 /build/dcos/patches/0007-core-jni-Switch-to-O3.patch
+echo "[i] Applying 0009-base-whitelist-a-few-services-to-location-indicator.patch"
+git am -3 /build/dcos/patches/0009-base-whitelist-a-few-services-to-location-indicator.patch
 cd /build/android
 
 cd build/soong
