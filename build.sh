@@ -125,14 +125,6 @@ echo "[i] Applying 0006-allow-toggling-screen-off-fod-1-2.patch"
 git am -3 /build/dcosx/patches/0006-allow-toggling-screen-off-fod-1-2.patch
 echo "[i] Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
 git am -3 /build/dcosx/patches/0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
-echo "[i] Applying 0010-support-new-special-runtime-permissions.patch"
-git am -3 /build/dcosx/patches/0010-support-new-special-runtime-permissions.patch
-echo "[i] Applying 0011-make-INTERNET-into-a-special-runtime-permission.patch"
-git am -3 /build/dcosx/patches/0011-make-INTERNET-into-a-special-runtime-permission.patch
-echo "[i] Applying 0012-add-a-NETWORK-permission-group-for-INTERNET.patch"
-git am -3 /build/dcosx/patches/0012-add-a-NETWORK-permission-group-for-INTERNET.patch
-echo "[i] Applying 0013-add-special-runtime-permission-for-other-sensors.patch"
-git am -3 /build/dcosx/patches/0013-add-special-runtime-permission-for-other-sensors.patch
 echo "[i] Applying 0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch"
 git am -3 /build/dcosx/patches/0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch
 echo "[i] Applying 0015-base-introduce-app-lock-1-4.patch"
