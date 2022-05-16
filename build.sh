@@ -82,6 +82,8 @@ echo "[i] Applying 0007-core-jni-Switch-to-O3.patch"
 git am -3 /build/dcos/patches/0007-core-jni-Switch-to-O3.patch
 echo "[i] Applying 0009-base-whitelist-a-few-services-to-location-indicator.patch"
 git am -3 /build/dcos/patches/0009-base-whitelist-a-few-services-to-location-indicator.patch
+echo "[i] Applying 0010-add-google-search-and-google-location-history-to-location.patch"
+git am -3 /build/dcos/patches/0010-add-google-search-and-google-location-history-to-location.patch
 cd /build/android
 
 cd build/soong
