@@ -1,0 +1,36 @@
+From 4b54bd0a73ffddf3d15c5ce16177edffefc69e11 Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Thu, 3 Feb 2022 14:54:32 +0530
+Subject: [PATCH 1/1] sepolicy: introduce app lock [2/4]
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+---
+ common/private/service.te       | 3 +++
+ common/private/service_contexts | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/common/private/service.te b/common/private/service.te
+index 34cdb87..92bdc42 100644
+--- a/common/private/service.te
++++ b/common/private/service.te
+@@ -2,3 +2,6 @@ type lineage_hardware_service, system_api_service, system_server_service, servic
+ type lineage_livedisplay_service, system_api_service, system_server_service, service_manager_type;
+ type pocket_service, system_api_service, system_server_service, service_manager_type;
+ type custom_globalactions_service, system_api_service, system_server_service, service_manager_type;
++
++# App lock
++type app_lock_service, app_api_service, system_server_service, service_manager_type;
+diff --git a/common/private/service_contexts b/common/private/service_contexts
+index fcb4155..7b810af 100644
+--- a/common/private/service_contexts
++++ b/common/private/service_contexts
+@@ -2,3 +2,6 @@ lineagehardware                           u:object_r:lineage_hardware_service:s0
+ lineagelivedisplay                        u:object_r:lineage_livedisplay_service:s0
+ pocket                                    u:object_r:pocket_service:s0
+ customglobalactions                       u:object_r:custom_globalactions_service:s0
++
++# App lock
++app_lock                                      u:object_r:app_lock_service:s0 
+-- 
+2.35.1
+

@@ -153,6 +153,11 @@ echo "[i] Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
 git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
 cd /build/android
 
+cd device/custom/sepolicy
+echo "[i] Applying 0016-sepolicy-introduce-app-lock-2-4.patch"
+git am -3 /build/dcosx/patches/0016-sepolicy-introduce-app-lock-2-4.patch
+cd /build/android
+
 echo "[i] Starting build process for DavinciCodeOSX..."
 
 lunch aosp_davinci-$BUILD_TYPE
