@@ -135,6 +135,8 @@ echo "[i] Applying 0013-add-special-runtime-permission-for-other-sensors.patch"
 git am -3 /build/dcosx/patches/0013-add-special-runtime-permission-for-other-sensors.patch
 echo "[i] Applying 0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch"
 git am -3 /build/dcosx/patches/0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch
+echo "[i] Applying 0015-base-introduce-app-lock-1-4.patch"
+git am -3 /build/dcosx/patches/0015-base-introduce-app-lock-1-4.patch
 cd /build/android
 
 cd system/core
