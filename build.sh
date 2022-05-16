@@ -151,6 +151,8 @@ echo "[i] Applying 0007-allow-toggling-screen-off-fod-2-2.patch"
 git am -3 /build/dcosx/patches/0007-allow-toggling-screen-off-fod-2-2.patch
 echo "[i] Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
 git am -3 /build/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
+echo "[i] Applying 0017-Settings-introduce-app-lock-3-4.patch"
+git am -3 /build/dcosx/patches/0017-Settings-introduce-app-lock-3-4.patch
 cd /build/android
 
 cd device/custom/sepolicy
