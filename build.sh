@@ -144,6 +144,11 @@ echo "[i] Applying 0002-LockscreenCharging-squashed-2-3.patch"
 git am -3 /build/dcosx/patches/0002-LockscreenCharging-squashed-2-3.patch
 cd /build/android
 
+cd vendor/aosp
+echo "[i] Applying 0018-vendor-introduce-app-lock-4-4.patch"
+git am -3 /build/dcosx/patches/0018-vendor-introduce-app-lock-4-4.patch
+cd /build/android
+
 cd packages/apps/Settings
 echo "[i] Applying 0003-LockscreenCharging-squashed-3-3.patch"
 git am -3 /build/dcosx/patches/0003-LockscreenCharging-squashed-3-3.patch

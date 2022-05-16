@@ -1,0 +1,60 @@
+From 337134a69b1b63a60754c99726b2c16572a08e16 Mon Sep 17 00:00:00 2001
+From: jhonboy121 <alfredmathew05@gmail.com>
+Date: Thu, 3 Mar 2022 15:04:43 +0530
+Subject: [PATCH 1/1] vendor: introduce app lock [4/4]
+
+Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
+Change-Id: I364f4a7fb853dcfe5832725bd7076de6015ae6ea
+---
+ config/common.mk                              |  4 ++++
+ ...app-permissions-davincicode-system_ext.xml | 23 +++++++++++++++++++
+ 2 files changed, 27 insertions(+)
+ create mode 100644 config/permissions/privapp-permissions-davincicode-system_ext.xml
+
+diff --git a/config/common.mk b/config/common.mk
+index a8a6639e..fd9207ab 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -44,6 +44,10 @@ PRODUCT_COPY_FILES += \
+ PRODUCT_COPY_FILES += \
+     vendor/aosp/prebuilt/common/etc/init/init.pixelexperience-updater.rc:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/init/init.pixelexperience-updater.rc
+ 
++# Custom Settings Permissions
++PRODUCT_COPY_FILES += \
++    vendor/aosp/config/permissions/privapp-permissions-davincicode-system_ext.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/permissions/privapp-permissions-davincicode-system_ext.xml
++
+ # Enable Android Beam on all targets
+ PRODUCT_COPY_FILES += \
+     vendor/aosp/config/permissions/android.software.nfc.beam.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/android.software.nfc.beam.xml
+diff --git a/config/permissions/privapp-permissions-davincicode-system_ext.xml b/config/permissions/privapp-permissions-davincicode-system_ext.xml
+new file mode 100644
+index 00000000..fa8bd7b8
+--- /dev/null
++++ b/config/permissions/privapp-permissions-davincicode-system_ext.xml
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ~ Copyright (C) 2022 DavinciCodeOS
++  ~
++  ~ Licensed under the Apache License, Version 2.0 (the "License");
++  ~ you may not use this file except in compliance with the License.
++  ~ You may obtain a copy of the License at
++  ~
++  ~      http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing, software
++  ~ distributed under the License is distributed on an "AS IS" BASIS,
++  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  ~ See the License for the specific language governing permissions and
++  ~ limitations under the License
++  -->
++
++<permissions>
++    <privapp-permissions package="com.android.settings">
++        <permission name="android.permission.MANAGE_APP_LOCK" />
++    </privapp-permissions>
++</permissions>
++
+-- 
+2.35.1
+
