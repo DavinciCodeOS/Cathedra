@@ -8,6 +8,7 @@
    <remove-project name="platform/external/zlib" />
    <remove-project name="packages_apps_Updates" />
    <remove-project name="packages_overlays_ThemeIcons" />
+   <remove-project name="platform/system/memory/lmkd" />
 
    <!-- Add new repositories -->
    <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="dcos-github" revision="12" />
