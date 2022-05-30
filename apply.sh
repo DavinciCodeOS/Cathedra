@@ -35,6 +35,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	git am -3 $CATHEDRA_PATH/dcos/patches/0005-vendor-fix-themedicons-path.patch
 	echo "[i] Applying 0013-build-Flatten-APEXs-for-performance.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0013-build-Flatten-APEXs-for-performance.patch
+	echo "[i] Applying 0014-build-Set-ro.apex.updatable-false-in-product-propert.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/0014-build-Set-ro.apex.updatable-false-in-product-propert.patch
 	cd $BASE_BUILD_DIR
 
 	cd build/tools
