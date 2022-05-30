@@ -9,6 +9,7 @@
    <remove-project name="packages_apps_Updates" />
    <remove-project name="packages_overlays_ThemeIcons" />
    <remove-project name="platform/system/memory/lmkd" />
+   <remove-project name="platform/external/erofs-utils" />
 
    <!-- Add new repositories -->
    <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="dcos-github" revision="12" />
@@ -17,6 +18,7 @@
    <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="dcos-github" revision="12" />
    <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="dcos-github" revision="lineage-19.1" />
    <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="dcos-github" revision="sc-v2" />
+   <project path="external/erofs-utils" name="DavinciCodeOS/platform_external_erofs-utils" remote="dcos-github" revision="master" />
    <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="dcos-github" revision="twelve" />
    <project path="system/memory/lmkd" name="YAAP/system_memory_lmkd" remote="dcos-github" revision="twelve" />
 
