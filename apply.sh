@@ -51,8 +51,6 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	git am -3 $CATHEDRA_PATH/dcos/patches/0004-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch
 	echo "[i] Applying 0007-core-jni-Switch-to-O3.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0007-core-jni-Switch-to-O3.patch
-	echo "[i] Applying 0009-base-whitelist-a-few-services-to-location-indicator.patch"
-	git am -3 $CATHEDRA_PATH/dcos/patches/0009-base-whitelist-a-few-services-to-location-indicator.patch
 	cd $BASE_BUILD_DIR
 
 	cd build/soong
