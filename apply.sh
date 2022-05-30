@@ -38,6 +38,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	cd build/tools
 	echo "[i] Applying 0003-releasetools-rebrand-to-davincicodeos.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0003-releasetools-rebrand-to-davincicodeos.patch
+	echo "[i] Applying 0011-build-add-erofs-support.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/0011-build-add-erofs-support.patch
 	cd $BASE_BUILD_DIR
 
 	cd frameworks/base

@@ -1,0 +1,1245 @@
+From e413e6ded57b53e240d535f4c43fc231d45e3765 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Mon, 30 May 2022 16:29:02 +0300
+Subject: [PATCH 1/1] build: add erofs support
+
+Squashed commit of the following:
+
+commit 41f7b9a9e02954b0a1db369eb40415db93b62b47
+Author: Dennis Shen <dzshen@google.com>
+Date:   Fri Feb 25 14:26:12 2022 +0000
+
+    Create a product variable to determine default apex payload filesystem type
+
+    1, Create a single valued product variable PRODUCT_DEFAULT_APEX_FS_TYPE
+    to represent the default file system type for apex payload if the
+    soong module does not explicitly specify a file system type. Default
+    value is ext4
+
+    2, Allow it to be overridable by the existence of environment variable
+    OVERRIDE_PRODUCT_DEFAULT_APEX_FS_TYPE
+
+    Test: build/soong/soong_ui.bash --dumpvar-mode PRODUCT_DEFAULT_APEX_FS_TYPEexport OVERRIDE_PRODUCT_DEFAULT_APEX_FS_TYPE=erofsbuild/soong/soong_ui.bash --dumpvar-mode PRODUCT_DEFAULT_APEX_FS_TYPE
+
+    Bug: 221404184
+    Change-Id: I06a7c3f7a7386d26866721617b9ee6c2ce06c257
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit abe55e743fe5e2881153201afded65276b278379
+Author: Kelvin Zhang <zhangkelvin@google.com>
+Date:   Wed Dec 1 14:21:24 2021 -0800
+
+    Explicitly set EROFS compression parameter
+
+    OTA will need to know the compression parameter used to construct EROFS
+    images. Currently, mkfs.erofs uses lz4hc,9 if the user didn't specify
+    one. But mkfs's default behavior is subject to change in future
+    versions. Therefore, explicitly specify the compression parameters so
+    OTA tooling can properly encode/decode erofs images.
+
+    Test: th
+    Change-Id: Ibbf67502827ee79437b766349be289048e685759
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 2cd109bde1462bb65bd4b086070a3880580f8fff
+Author: Daeho Jeong <daehojeong@google.com>
+Date:   Wed Dec 1 15:21:42 2021 -0800
+
+    Add erofs tools in target
+
+    Bug: 201685920
+    Test: mm fsck.erofs
+    Signed-off-by: Daeho Jeong <daehojeong@google.com>
+    Change-Id: I43ebe6c40c705526e205a08fe8fcd34d265d0245
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit ab02145e6f33410acb38600b2c8b671fa7520c7c
+Author: David Anderson <dvander@google.com>
+Date:   Thu Sep 23 17:03:14 2021 -0700
+
+    Re-enable disable_sparse properties.
+
+    This accidentally got omitted in the recent refactoring of
+    generate-image-prop-dictionary.
+
+    Bug: N/A
+    Test: build, system.img is not sparsed
+    Change-Id: Ie2e095aff08e937111f5c7ffc06e38e87c2d7d43
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit bda6b317b0470989f1653e50476f5944e47068e4
+Author: David Anderson <dvander@google.com>
+Date:   Fri Mar 4 10:57:58 2022 -0800
+
+    build_image: Remove mkerofsimage.sh.
+
+    These wrapper scripts are difficult to maintain and there's not really
+    any value add. The argument strings don't match and every new build flag
+    has to be connected in an extra place.
+
+    Bug: 222715577
+    Test: make with EROFS enabled
+    Change-Id: Ie0e51cc30aa08b004d5d8345a2a2d885e193ffa9
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 1a2dd2273bfe57c05c70e3b82aa6cf0f1514572f
+Author: Woody Lin <woodylin@google.com>
+Date:   Mon Mar 21 18:29:41 2022 +0800
+
+    Add fsck.erofs to INTERNAL_OTATOOLS_MODULES
+
+    The latest build_image.py requires fsck.erofs to execute. Adds
+    fsck.erofs to INTERNAL_OTATOOLS_MODULES so it can be packed into
+    otatools.zip.
+
+    Bug: 225756733
+    Signed-off-by: Woody Lin <woodylin@google.com>
+    Change-Id: Ib88dbb6cce5e9424d1e80173da34b503d32d0fd3
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 932bc7cbf84ba5425d734207e93315c80936c027
+Author: David Anderson <dvander@google.com>
+Date:   Fri Nov 12 02:01:29 2021 +0000
+
+    build_image: Query the actual image size after invoking the final mkfs.
+
+    It's not guaranteed that the requested image size to mkfs is precisely
+    respected, due to metadata alignment and such. For accurate care maps
+    use the real image size rather than requested.
+
+    Bug: 205541521
+    Test: smartsync to 7892270, check that care_map.pb has the right block
+          count
+    Change-Id: I60fe64f720db13d3c3c4f1d8968341d7293217c9
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit d94f4670d7165b27609c94aaa6e0ab81e240a2f9
+Author: David Anderson <dvander@google.com>
+Date:   Wed Oct 13 00:20:43 2021 -0700
+
+    Add pcluster and deduplication support for erofs images.
+
+    This adds BOARD_xIMAGE_EROFS_PCLUSTER_SIZE and
+    BOARD_EROFS_PCLUSTER_SIZE, which set the "pcluster size" of erofs images
+    for individual images or all erofs images respectively. The pcluster
+    size affects the maximum size of a physical compressed block.
+
+    This also adds BOARD_EROFS_SHARE_DUP_BLOCKS, which turns on chunk
+    support in EROFS.
+
+    Bug: 201685920
+    Test: manual test
+    Change-Id: I27ec0899f89890562796dd9fa567fc74182fbefb
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 516de337a7591b2978f23e330834e4cf4ba22c6c
+Author: David Anderson <dvander@google.com>
+Date:   Thu Sep 23 15:48:29 2021 -0700
+
+    Clean up code duplication in build_image.py.
+
+    This is another code block where lots of stuff is duplicated, making it
+    hard to add new partitions or partition features.
+
+    Bug: N/A
+    Test: m otapackage, misc_info.txt is identical
+    Change-Id: I435987605fc66b78bfaf454556f1eaa498e3728f
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 407756da56a580fdd3f2802476d1c09fbcc1ebda
+Author: David Anderson <dvander@google.com>
+Date:   Fri Oct 8 18:33:43 2021 -0700
+
+    Add blocklist support for EROFS.
+
+    This also fixes argument ordering for mkerofsimage.sh.
+
+    Bug: 201685920
+    Test: build OTA with erofs
+    Change-Id: Ic2ba794e37a0feb73a1028eb7522d35bffbf3af6
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 82ebdf8c44ff2a373729eb941fc8dd8c3175d1f1
+Author: David Anderson <dvander@google.com>
+Date:   Wed Sep 22 18:02:01 2021 -0700
+
+    Allow changing the EROFS compressor.
+
+    This adds BOARD_EROFS_COMPRESSOR to change the compression algorithm
+    globally, and BOARD_{x}IMAGE_EROFS_COMPRESSOR to change it for
+    individual partitions.
+
+    Bug: N/A
+    Test: manual test
+    Change-Id: I2ef831558242a4070ee96269140c33b66c689351
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 3272bde1424722c7a28650a2bdb360d2003b1f39
+Author: David Anderson <dvander@google.com>
+Date:   Tue Sep 21 22:24:43 2021 -0700
+
+    Refactor generate-image-prop-dictionary.
+
+    It's really error prone to add new partitions or image flags given the
+    amount of code duplication here. Since most images have (or should have)
+    roughly the same flags, this factors the work out into a helper
+    function.
+
+    Bug: N/A
+    Test: m, m otapackage
+    Change-Id: If1a22b9d7b5cf028ba52608322c4383792dae6b9
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit 1bff587484fd75cfcd0c2a8c787c0007ac0b2f53
+Author: Huang Jianan <huangjianan@oppo.com>
+Date:   Wed Sep 8 18:28:32 2021 +0800
+
+    Avoid too much reserved_size for erofs image
+
+    After the erofs image is built, it won't be modified again. The reserve
+    room is only used for the hash footer. There is no need to set an
+    excessive margin.
+
+    Bug: 199248596
+    Test: erofs image size is smaller than before
+    Signed-off-by: Huang Jianan <huangjianan@oppo.com>
+    Change-Id: If2535b9ad2c2d60bea74feeca576a168387ff341
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit a0a5cece6c0c191dc3eefae97e463a8823da284d
+Author: Huang Jianan <huangjianan@oppo.com>
+Date:   Wed Sep 8 18:11:22 2021 +0800
+
+    Avoid repeated building of erofs image
+
+    The image size of erofs is only affected by the content of the input
+    file, so it doesn't care about the input image_size. In addition, the
+    build time of erofs image is longer than ext4 due to compression. Only
+    execute mkfs once to reduce unnecessary time consumption.
+
+    Bug: 199248596
+    Test: erofs image build faster than before
+    Signed-off-by: Huang Jianan <huangjianan@oppo.com>
+    Change-Id: I23a4e640d5066485de3fea0f808998045e716d1f
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit a9a7a757ad434131b3c161efc1aec0405a11d480
+Author: David Anderson <dvander@google.com>
+Date:   Tue Aug 31 21:32:45 2021 -0700
+
+    Don't sparse right-sized ext4 and erofs images.
+
+    When we introduced Dynamic Partitions, we stopped giving readonly
+    partitions fixed sizes. In addition we introduced deduplication for
+    ext4. These two factors greatly reduce the impact of sparse images,
+    since there aren't many fill blocks to optimize.
+
+    This patch disables sparsing for images that are rightsized and do not
+    explicitly specify extra reserved space. This makes the images a little
+    easier to work with from an engineering perspective. They no longer have
+    to be unsparsed to interact with any tooling. It also eases a potential
+    source of bugs, as b/184225422 is not reproducible with sparsing off.
+
+    On Pixel, the difference between the sparsed partitions and unsparsed is
+    12M (out of roughly 4G).
+
+    Bug: 198001223
+    Test: make, treehugger, make target-files-package
+          dynamic partitions are no longer sparse images
+    Change-Id: I74459f8abe74a15a24ba5a40cf701e6af2db8179
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+
+commit bb8fb7148508125aaaa9eab36bb8752aa1f61037
+Author: David Anderson <dvander@google.com>
+Date:   Fri Aug 27 16:43:09 2021 -0700
+
+    Fix generate-userimage-prop-dictionary getting called unnecessarily.
+
+    odm, odm_dlkm, vendor_dlkm call generate-userimage-prop-dictionary. This
+    appears to be inadvertent as it pulls in props from all the other
+    partitions. Instead, call generate-image-prop-dictionary which is
+    specific to one partition.
+
+    Bug: 198001223
+    Test: builds, treehugger green
+    Change-Id: Ib177c740068f1c087d517b363649551092038760
+    Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+---
+ core/Makefile                     | 167 +++++-------
+ core/config.mk                    |   2 +-
+ core/product.mk                   |   3 +
+ core/product_config.mk            |   6 +
+ core/soong_config.mk              |   2 +
+ target/product/base_system.mk     |   6 +
+ tools/releasetools/Android.bp     |   4 +-
+ tools/releasetools/build_image.py | 424 ++++++++++++------------------
+ tools/releasetools/common.py      |   6 +-
+ 9 files changed, 254 insertions(+), 366 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index a1cf8cf40..1bbc7cc0b 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -1569,7 +1569,8 @@ ifneq ($(filter \
+     $(BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE) \
+     $(BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE) \
+   ,erofs),)
+-INTERNAL_USERIMAGES_DEPS += $(MKEROFSUSERIMG)
++INTERNAL_USERIMAGES_DEPS += $(MKEROFS)
++BOARD_EROFS_COMPRESSOR ?= "lz4hc,9"
+ endif
+ 
+ ifneq ($(filter \
+@@ -1615,31 +1616,54 @@ endif
+ 
+ endif # PRODUCT_USE_DYNAMIC_PARTITIONS
+ 
++# $(1) the partition name (eg system)
++# $(2) the image prop file
++define add-common-flags-to-image-props
++$(eval _var := $(call to-upper,$(1)))
++$(hide) echo "$(1)_selinux_fc=$(SELINUX_FC)" >> $(2)
++$(hide) echo "building_$(1)_image=$(BUILDING_$(_var)_IMAGE)" >> $(2)
++endef
++
++# $(1) the partition name (eg system)
++# $(2) the image prop file
++define add-common-ro-flags-to-image-props
++$(eval _var := $(call to-upper,$(1)))
++$(if $(BOARD_$(_var)IMAGE_EROFS_COMPRESSOR),$(hide) echo "$(1)_erofs_compressor=$(BOARD_$(_var)IMAGE_EROFS_COMPRESSOR)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_EROFS_PCLUSTER_SIZE),$(hide) echo "$(1)_erofs_pcluster_size=$(BOARD_$(_var)IMAGE_EROFS_PCLUSTER_SIZE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_EXTFS_INODE_COUNT),$(hide) echo "$(1)_extfs_inode_count=$(BOARD_$(_var)IMAGE_EXTFS_INODE_COUNT)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_EXTFS_RSV_PCT),$(hide) echo "$(1)_extfs_rsv_pct=$(BOARD_$(_var)IMAGE_EXTFS_RSV_PCT)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "$(1)_f2fs_sldc_flags=$(BOARD_$(_var)IMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "$(1)_f2fs_compress=$(BOARD_$(_var)IMAGE_FILE_SYSTEM_COMPRESS)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_FILE_SYSTEM_TYPE),$(hide) echo "$(1)_fs_type=$(BOARD_$(_var)IMAGE_FILE_SYSTEM_TYPE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_JOURNAL_SIZE),$(hide) echo "$(1)_journal_size=$(BOARD_$(_var)IMAGE_JOURNAL_SIZE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "$(1)_reserved_size=$(BOARD_$(_var)IMAGE_PARTITION_RESERVED_SIZE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_PARTITION_SIZE),$(hide) echo "$(1)_size=$(BOARD_$(_var)IMAGE_PARTITION_SIZE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "$(1)_squashfs_block_size=$(BOARD_$(_var)IMAGE_SQUASHFS_BLOCK_SIZE)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "$(1)_squashfs_compressor=$(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "$(1)_squashfs_compressor_opt=$(BOARD_$(_var)IMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(2))
++$(if $(BOARD_$(_var)IMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "$(1)_squashfs_disable_4k_align=$(BOARD_$(_var)IMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(2))
++$(if $(PRODUCT_$(_var)_BASE_FS_PATH),$(hide) echo "$(1)_base_fs_file=$(PRODUCT_$(_var)_BASE_FS_PATH)" >> $(2))
++$(eval _size := $(BOARD_$(_var)IMAGE_PARTITION_SIZE))
++$(eval _reserved := $(BOARD_$(_var)IMAGE_PARTITION_RESERVED_SIZE))
++$(eval _headroom := $(PRODUCT_$(_var)_HEADROOM))
++$(if $(or $(_size), $(_reserved), $(_headroom)),,
++    $(hide) echo "$(1)_disable_sparse=true" >> $(2))
++$(call add-common-flags-to-image-props,$(1),$(2))
++endef
++
+ # $(1): the path of the output dictionary file
+ # $(2): a subset of "system vendor cache userdata product system_ext oem odm vendor_dlkm odm_dlkm"
+ # $(3): additional "key=value" pairs to append to the dictionary file.
+ define generate-image-prop-dictionary
+ $(if $(filter $(2),system),\
+-    $(if $(BOARD_SYSTEMIMAGE_PARTITION_SIZE),$(hide) echo "system_size=$(BOARD_SYSTEMIMAGE_PARTITION_SIZE)" >> $(1))
+     $(if $(INTERNAL_SYSTEM_OTHER_PARTITION_SIZE),$(hide) echo "system_other_size=$(INTERNAL_SYSTEM_OTHER_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "system_fs_type=$(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "system_f2fs_compress=$(BOARD_SYSTEMIMAGE_FILE_SYSTEM_COMPRESS)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "system_f2fs_sldc_flags=$(BOARD_SYSTEMIMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "system_extfs_inode_count=$(BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_EXTFS_RSV_PCT),$(hide) echo "system_extfs_rsv_pct=$(BOARD_SYSTEMIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_JOURNAL_SIZE),$(hide) echo "system_journal_size=$(BOARD_SYSTEMIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "system_squashfs_compressor=$(BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "system_squashfs_compressor_opt=$(BOARD_SYSTEMIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "system_squashfs_block_size=$(BOARD_SYSTEMIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "system_squashfs_disable_4k_align=$(BOARD_SYSTEMIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(PRODUCT_SYSTEM_BASE_FS_PATH),$(hide) echo "system_base_fs_file=$(PRODUCT_SYSTEM_BASE_FS_PATH)" >> $(1))
+     $(if $(PRODUCT_SYSTEM_HEADROOM),$(hide) echo "system_headroom=$(PRODUCT_SYSTEM_HEADROOM)" >> $(1))
+-    $(if $(BOARD_SYSTEMIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "system_reserved_size=$(BOARD_SYSTEMIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "system_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_system_image=$(BUILDING_SYSTEM_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,system,$(1))
+ )
+ $(if $(filter $(2),system_other),\
+     $(hide) echo "building_system_other_image=$(BUILDING_SYSTEM_OTHER_IMAGE)" >> $(1)
++    $(if $(INTERNAL_SYSTEM_OTHER_PARTITION_SIZE),,
++        $(hide) echo "system_other_disable_sparse=true" >> $(1))
+ )
+ $(if $(filter $(2),userdata),\
+     $(if $(BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "userdata_fs_type=$(BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+@@ -1647,116 +1671,37 @@ $(if $(filter $(2),userdata),\
+     $(if $(PRODUCT_FS_CASEFOLD),$(hide) echo "needs_casefold=$(PRODUCT_FS_CASEFOLD)" >> $(1))
+     $(if $(PRODUCT_QUOTA_PROJID),$(hide) echo "needs_projid=$(PRODUCT_QUOTA_PROJID)" >> $(1))
+     $(if $(PRODUCT_FS_COMPRESSION),$(hide) echo "needs_compress=$(PRODUCT_FS_COMPRESSION)" >> $(1))
+-    $(hide) echo "userdata_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_userdata_image=$(BUILDING_USERDATA_IMAGE)" >> $(1)
++    $(call add-common-flags-to-image-props,userdata,$(1))
+ )
+ $(if $(filter $(2),cache),\
+     $(if $(BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "cache_fs_type=$(BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+     $(if $(BOARD_CACHEIMAGE_PARTITION_SIZE),$(hide) echo "cache_size=$(BOARD_CACHEIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(hide) echo "cache_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_cache_image=$(BUILDING_CACHE_IMAGE)" >> $(1)
++    $(call add-common-flags-to-image-props,cache,$(1))
+ )
+ $(if $(filter $(2),vendor),\
+-    $(if $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "vendor_fs_type=$(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "vendor_f2fs_compress=$(BOARD_VENDORIMAGE_FILE_SYSTEM_COMPRESS)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "vendor_f2fs_sldc_flags=$(BOARD_VENDORIMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_EXTFS_INODE_COUNT),$(hide) echo "vendor_extfs_inode_count=$(BOARD_VENDORIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_EXTFS_RSV_PCT),$(hide) echo "vendor_extfs_rsv_pct=$(BOARD_VENDORIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_PARTITION_SIZE),$(hide) echo "vendor_size=$(BOARD_VENDORIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_JOURNAL_SIZE),$(hide) echo "vendor_journal_size=$(BOARD_VENDORIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "vendor_squashfs_compressor=$(BOARD_VENDORIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "vendor_squashfs_compressor_opt=$(BOARD_VENDORIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "vendor_squashfs_block_size=$(BOARD_VENDORIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "vendor_squashfs_disable_4k_align=$(BOARD_VENDORIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(PRODUCT_VENDOR_BASE_FS_PATH),$(hide) echo "vendor_base_fs_file=$(PRODUCT_VENDOR_BASE_FS_PATH)" >> $(1))
+-    $(if $(BOARD_VENDORIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "vendor_reserved_size=$(BOARD_VENDORIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "vendor_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_vendor_image=$(BUILDING_VENDOR_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,vendor,$(1))
+ )
+ $(if $(filter $(2),product),\
+-    $(if $(BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "product_fs_type=$(BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "product_f2fs_compress=$(BOARD_PRODUCTIMAGE_FILE_SYSTEM_COMPRESS)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "product_f2fs_sldc_flags=$(BOARD_PRODUCTIMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_EXTFS_INODE_COUNT),$(hide) echo "product_extfs_inode_count=$(BOARD_PRODUCTIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_EXTFS_RSV_PCT),$(hide) echo "product_extfs_rsv_pct=$(BOARD_PRODUCTIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_PARTITION_SIZE),$(hide) echo "product_size=$(BOARD_PRODUCTIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_JOURNAL_SIZE),$(hide) echo "product_journal_size=$(BOARD_PRODUCTIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "product_squashfs_compressor=$(BOARD_PRODUCTIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "product_squashfs_compressor_opt=$(BOARD_PRODUCTIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "product_squashfs_block_size=$(BOARD_PRODUCTIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "product_squashfs_disable_4k_align=$(BOARD_PRODUCTIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(PRODUCT_PRODUCT_BASE_FS_PATH),$(hide) echo "product_base_fs_file=$(PRODUCT_PRODUCT_BASE_FS_PATH)" >> $(1))
+-    $(if $(BOARD_PRODUCTIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "product_reserved_size=$(BOARD_PRODUCTIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "product_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_product_image=$(BUILDING_PRODUCT_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,product,$(1))
+ )
+ $(if $(filter $(2),system_ext),\
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "system_ext_fs_type=$(BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "system_ext_f2fs_compress=$(BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_COMPRESS)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "system_ext_f2fs_sldc_flags=$(BOARD_SYSTEM_EXTIMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_EXTFS_INODE_COUNT),$(hide) echo "system_ext_extfs_inode_count=$(BOARD_SYSTEM_EXTIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_EXTFS_RSV_PCT),$(hide) echo "system_ext_extfs_rsv_pct=$(BOARD_SYSTEM_EXTIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_PARTITION_SIZE),$(hide) echo "system_ext_size=$(BOARD_SYSTEM_EXTIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_JOURNAL_SIZE),$(hide) echo "system_ext_journal_size=$(BOARD_SYSTEM_EXTIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "system_ext_squashfs_compressor=$(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "system_ext_squashfs_compressor_opt=$(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "system_ext_squashfs_block_size=$(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "system_ext_squashfs_disable_4k_align=$(BOARD_SYSTEM_EXTIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(BOARD_SYSTEM_EXTIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "system_ext_reserved_size=$(BOARD_SYSTEM_EXTIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "system_ext_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_system_ext_image=$(BUILDING_SYSTEM_EXT_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,system_ext,$(1))
+ )
+ $(if $(filter $(2),odm),\
+-    $(if $(BOARD_ODMIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "odm_fs_type=$(BOARD_ODMIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "odm_extfs_inode_count=$(BOARD_ODMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_EXTFS_RSV_PCT),$(hide) echo "odm_extfs_rsv_pct=$(BOARD_ODMIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_PARTITION_SIZE),$(hide) echo "odm_size=$(BOARD_ODMIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_JOURNAL_SIZE),$(hide) echo "odm_journal_size=$(BOARD_ODMIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "odm_squashfs_compressor=$(BOARD_ODMIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "odm_squashfs_compressor_opt=$(BOARD_ODMIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "odm_squashfs_block_size=$(BOARD_ODMIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "odm_squashfs_disable_4k_align=$(BOARD_ODMIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(PRODUCT_ODM_BASE_FS_PATH),$(hide) echo "odm_base_fs_file=$(PRODUCT_ODM_BASE_FS_PATH)" >> $(1))
+-    $(if $(BOARD_ODMIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "odm_reserved_size=$(BOARD_ODMIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "odm_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_odm_image=$(BUILDING_ODM_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,odm,$(1))
+ )
+ $(if $(filter $(2),vendor_dlkm),\
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "vendor_dlkm_fs_type=$(BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_COMPRESS),$(hide) echo "vendor_dlkm_f2fs_compress=$(BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_COMPRESS)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_F2FS_SLOAD_COMPRESS_FLAGS),$(hide) echo "vendor_dlkm_f2fs_sldc_flags=$(BOARD_VENDOR_DLKMIMAGE_F2FS_SLOAD_COMPRESS_FLAGS)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "vendor_dlkm_extfs_inode_count=$(BOARD_VENDOR_DLKMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_EXTFS_RSV_PCT),$(hide) echo "vendor_dlkm_extfs_rsv_pct=$(BOARD_VENDOR_DLKMIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE),$(hide) echo "vendor_dlkm_size=$(BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_JOURNAL_SIZE),$(hide) echo "vendor_dlkm_journal_size=$(BOARD_VENDOR_DLKMIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "vendor_dlkm_squashfs_compressor=$(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "vendor_dlkm_squashfs_compressor_opt=$(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "vendor_dlkm_squashfs_block_size=$(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "vendor_dlkm_squashfs_disable_4k_align=$(BOARD_VENDOR_DLKMIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(BOARD_VENDOR_DLKMIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "vendor_dlkm_reserved_size=$(BOARD_VENDOR_DLKMIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "vendor_dlkm_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_vendor_dlkm_image=$(BUILDING_VENDOR_DLKM_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,vendor_dlkm,$(1))
+ )
+ $(if $(filter $(2),odm_dlkm),\
+-    $(if $(BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "odm_dlkm_fs_type=$(BOARD_ODM_DLKMIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "odm_dlkm_extfs_inode_count=$(BOARD_ODM_DLKMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_EXTFS_RSV_PCT),$(hide) echo "odm_dlkm_extfs_rsv_pct=$(BOARD_ODM_DLKMIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_PARTITION_SIZE),$(hide) echo "odm_dlkm_size=$(BOARD_ODM_DLKMIMAGE_PARTITION_SIZE)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_JOURNAL_SIZE),$(hide) echo "odm_dlkm_journal_size=$(BOARD_ODM_DLKMIMAGE_JOURNAL_SIZE)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_SQUASHFS_COMPRESSOR),$(hide) echo "odm_dlkm_squashfs_compressor=$(BOARD_ODM_DLKMIMAGE_SQUASHFS_COMPRESSOR)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_SQUASHFS_COMPRESSOR_OPT),$(hide) echo "odm_dlkm_squashfs_compressor_opt=$(BOARD_ODM_DLKMIMAGE_SQUASHFS_COMPRESSOR_OPT)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_SQUASHFS_BLOCK_SIZE),$(hide) echo "odm_dlkm_squashfs_block_size=$(BOARD_ODM_DLKMIMAGE_SQUASHFS_BLOCK_SIZE)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_SQUASHFS_DISABLE_4K_ALIGN),$(hide) echo "odm_dlkm_squashfs_disable_4k_align=$(BOARD_ODM_DLKMIMAGE_SQUASHFS_DISABLE_4K_ALIGN)" >> $(1))
+-    $(if $(BOARD_ODM_DLKMIMAGE_PARTITION_RESERVED_SIZE),$(hide) echo "odm_dlkm_reserved_size=$(BOARD_ODM_DLKMIMAGE_PARTITION_RESERVED_SIZE)" >> $(1))
+-    $(hide) echo "odm_dlkm_selinux_fc=$(SELINUX_FC)" >> $(1)
+-    $(hide) echo "building_odm_dlkm_image=$(BUILDING_ODM_DLKM_IMAGE)" >> $(1)
++    $(call add-common-ro-flags-to-image-props,odm_dlkm,$(1))
+ )
+ $(if $(filter $(2),oem),\
+     $(if $(BOARD_OEMIMAGE_PARTITION_SIZE),$(hide) echo "oem_size=$(BOARD_OEMIMAGE_PARTITION_SIZE)" >> $(1))
+     $(if $(BOARD_OEMIMAGE_JOURNAL_SIZE),$(hide) echo "oem_journal_size=$(BOARD_OEMIMAGE_JOURNAL_SIZE)" >> $(1))
+     $(if $(BOARD_OEMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "oem_extfs_inode_count=$(BOARD_OEMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
+     $(if $(BOARD_OEMIMAGE_EXTFS_RSV_PCT),$(hide) echo "oem_extfs_rsv_pct=$(BOARD_OEMIMAGE_EXTFS_RSV_PCT)" >> $(1))
+-    $(hide) echo "oem_selinux_fc=$(SELINUX_FC)" >> $(1)
++    $(call add-common-flags-to-image-props,oem,$(1))
+ )
+ $(hide) echo "ext_mkuserimg=$(notdir $(MKEXTUSERIMG))" >> $(1)
+ 
+@@ -1765,6 +1710,9 @@ $(if $(INTERNAL_USERIMAGES_SPARSE_EXT_FLAG),$(hide) echo "extfs_sparse_flag=$(IN
+ $(if $(INTERNAL_USERIMAGES_SPARSE_EROFS_FLAG),$(hide) echo "erofs_sparse_flag=$(INTERNAL_USERIMAGES_SPARSE_EROFS_FLAG)" >> $(1))
+ $(if $(INTERNAL_USERIMAGES_SPARSE_SQUASHFS_FLAG),$(hide) echo "squashfs_sparse_flag=$(INTERNAL_USERIMAGES_SPARSE_SQUASHFS_FLAG)" >> $(1))
+ $(if $(INTERNAL_USERIMAGES_SPARSE_F2FS_FLAG),$(hide) echo "f2fs_sparse_flag=$(INTERNAL_USERIMAGES_SPARSE_F2FS_FLAG)" >> $(1))
++$(if $(BOARD_EROFS_COMPRESSOR),$(hide) echo "erofs_default_compressor=$(BOARD_EROFS_COMPRESSOR)" >> $(1))
++$(if $(BOARD_EROFS_PCLUSTER_SIZE),$(hide) echo "erofs_pcluster_size=$(BOARD_EROFS_PCLUSTER_SIZE)" >> $(1))
++$(if $(BOARD_EROFS_SHARE_DUP_BLOCKS),$(hide) echo "erofs_share_dup_blocks=$(BOARD_EROFS_SHARE_DUP_BLOCKS)" >> $(1))
+ $(if $(BOARD_EXT4_SHARE_DUP_BLOCKS),$(hide) echo "ext4_share_dup_blocks=$(BOARD_EXT4_SHARE_DUP_BLOCKS)" >> $(1))
+ $(if $(BOARD_FLASH_LOGICAL_BLOCK_SIZE), $(hide) echo "flash_logical_block_size=$(BOARD_FLASH_LOGICAL_BLOCK_SIZE)" >> $(1))
+ $(if $(BOARD_FLASH_ERASE_BLOCK_SIZE), $(hide) echo "flash_erase_block_size=$(BOARD_FLASH_ERASE_BLOCK_SIZE)" >> $(1))
+@@ -3312,7 +3260,8 @@ define build-odmimage-target
+   $(call pretty,"Target odm fs image: $(INSTALLED_ODMIMAGE_TARGET)")
+   @mkdir -p $(TARGET_OUT_ODM)
+   @mkdir -p $(odmimage_intermediates) && rm -rf $(odmimage_intermediates)/odm_image_info.txt
+-  $(call generate-userimage-prop-dictionary, $(odmimage_intermediates)/odm_image_info.txt, skip_fsck=true)
++  $(call generate-image-prop-dictionary, $(odmimage_intermediates)/odm_image_info.txt, odm, \
++	  skip_fsck=true)
+   PATH=$(INTERNAL_USERIMAGES_BINARY_PATHS):$$PATH \
+       $(BUILD_IMAGE) \
+           $(TARGET_OUT_ODM) $(odmimage_intermediates)/odm_image_info.txt \
+@@ -3363,7 +3312,8 @@ define build-vendor_dlkmimage-target
+   $(call pretty,"Target vendor_dlkm fs image: $(INSTALLED_VENDOR_DLKMIMAGE_TARGET)")
+   @mkdir -p $(TARGET_OUT_VENDOR_DLKM)
+   @mkdir -p $(vendor_dlkmimage_intermediates) && rm -rf $(vendor_dlkmimage_intermediates)/vendor_dlkm_image_info.txt
+-  $(call generate-userimage-prop-dictionary, $(vendor_dlkmimage_intermediates)/vendor_dlkm_image_info.txt, skip_fsck=true)
++  $(call generate-image-prop-dictionary, $(vendor_dlkmimage_intermediates)/vendor_dlkm_image_info.txt, \
++	  vendor_dlkm, skip_fsck=true)
+   PATH=$(INTERNAL_USERIMAGES_BINARY_PATHS):$$PATH \
+       $(BUILD_IMAGE) \
+           $(TARGET_OUT_VENDOR_DLKM) $(vendor_dlkmimage_intermediates)/vendor_dlkm_image_info.txt \
+@@ -3414,7 +3364,8 @@ define build-odm_dlkmimage-target
+   $(call pretty,"Target odm_dlkm fs image: $(INSTALLED_ODM_DLKMIMAGE_TARGET)")
+   @mkdir -p $(TARGET_OUT_ODM_DLKM)
+   @mkdir -p $(odm_dlkmimage_intermediates) && rm -rf $(odm_dlkmimage_intermediates)/odm_dlkm_image_info.txt
+-  $(call generate-userimage-prop-dictionary, $(odm_dlkmimage_intermediates)/odm_dlkm_image_info.txt, skip_fsck=true)
++  $(call generate-image-prop-dictionary, $(odm_dlkmimage_intermediates)/odm_dlkm_image_info.txt, \
++	  odm_dlkm, skip_fsck=true)
+   PATH=$(INTERNAL_USERIMAGES_BINARY_PATHS):$$PATH \
+       $(BUILD_IMAGE) \
+           $(TARGET_OUT_ODM_DLKM) $(odm_dlkmimage_intermediates)/odm_dlkm_image_info.txt \
+@@ -4362,6 +4313,7 @@ INTERNAL_OTATOOLS_MODULES := \
+   e2fsdroid \
+   fc_sort \
+   fec \
++  fsck.erofs \
+   fsck.f2fs \
+   fs_config \
+   generate_verity_key \
+@@ -4383,7 +4335,6 @@ INTERNAL_OTATOOLS_MODULES := \
+   mke2fs \
+   mke2fs.conf \
+   mkfs.erofs \
+-  mkerofsimage.sh \
+   mkf2fsuserimg.sh \
+   mksquashfs \
+   mksquashfsimage.sh \
+diff --git a/core/config.mk b/core/config.mk
+index 40a536e0a..6b36ff663 100644
+--- a/core/config.mk
++++ b/core/config.mk
+@@ -560,7 +560,7 @@ APICHECK := $(HOST_OUT_JAVA_LIBRARIES)/metalava$(COMMON_JAVA_PACKAGE_SUFFIX)
+ FS_GET_STATS := $(HOST_OUT_EXECUTABLES)/fs_get_stats$(HOST_EXECUTABLE_SUFFIX)
+ MKEXTUSERIMG := $(HOST_OUT_EXECUTABLES)/mkuserimg_mke2fs
+ MKE2FS_CONF := system/extras/ext4_utils/mke2fs.conf
+-MKEROFSUSERIMG := $(HOST_OUT_EXECUTABLES)/mkerofsimage.sh
++MKEROFS := $(HOST_OUT_EXECUTABLES)/mkfs.erofs
+ MKSQUASHFSUSERIMG := $(HOST_OUT_EXECUTABLES)/mksquashfsimage.sh
+ MKF2FSUSERIMG := $(HOST_OUT_EXECUTABLES)/mkf2fsuserimg.sh
+ SIMG2IMG := $(HOST_OUT_EXECUTABLES)/simg2img$(HOST_EXECUTABLE_SUFFIX)
+diff --git a/core/product.mk b/core/product.mk
+index c4446f351..f5145df09 100644
+--- a/core/product.mk
++++ b/core/product.mk
+@@ -324,6 +324,9 @@ _product_list_vars += PRODUCT_EXTRA_VNDK_VERSIONS
+ # Whether APEX should be compressed or not
+ _product_single_value_vars += PRODUCT_COMPRESSED_APEX
+ 
++# Default APEX payload file system type
++_product_single_value_vars += PRODUCT_DEFAULT_APEX_FS_TYPE
++
+ # VNDK version of product partition. It can be 'current' if the product
+ # partitions uses PLATFORM_VNDK_VERSION.
+ _product_single_value_vars += PRODUCT_PRODUCT_VNDK_VERSION
+diff --git a/core/product_config.mk b/core/product_config.mk
+index 679453e52..1e28a5fa9 100644
+--- a/core/product_config.mk
++++ b/core/product_config.mk
+@@ -455,6 +455,12 @@ endif
+ $(KATI_obsolete_var PRODUCT_USE_PRODUCT_VNDK,Use PRODUCT_PRODUCT_VNDK_VERSION instead)
+ $(KATI_obsolete_var PRODUCT_USE_PRODUCT_VNDK_OVERRIDE,Use PRODUCT_PRODUCT_VNDK_VERSION instead)
+ 
++# The default apex file system type can be overridden by environment variable
++# OVERRIDE_PRODUCT_DEFAULT_APEX_FS_TYPE
++ifdef OVERRIDE_PRODUCT_DEFAULT_APEX_FS_TYPE
++  PRODUCT_DEFAULT_APEX_FS_TYPE := $(OVERRIDE_PRODUCT_DEFAULT_APEX_FS_TYPE)
++endif
++
+ ifdef PRODUCT_ENFORCE_RRO_EXEMPTED_TARGETS
+     $(error PRODUCT_ENFORCE_RRO_EXEMPTED_TARGETS is deprecated, consider using RRO for \
+       $(PRODUCT_ENFORCE_RRO_EXEMPTED_TARGETS))
+diff --git a/core/soong_config.mk b/core/soong_config.mk
+index b7380d370..961bb8a92 100644
+--- a/core/soong_config.mk
++++ b/core/soong_config.mk
+@@ -268,6 +268,8 @@ $(call add_json_bool, SelinuxIgnoreNeverallows, $(filter true,$(SELINUX_IGNORE_N
+ 
+ $(call add_json_bool, SepolicySplit, $(filter true,$(PRODUCT_SEPOLICY_SPLIT)))
+ 
++$(call add_json_str, DefaultAPEXFSType, $(PRODUCT_DEFAULT_APEX_FS_TYPE))
++
+ $(call json_end)
+ 
+ $(file >$(SOONG_VARIABLES).tmp,$(json_contents))
+diff --git a/target/product/base_system.mk b/target/product/base_system.mk
+index 4ebc46432..6b86f3efb 100644
+--- a/target/product/base_system.mk
++++ b/target/product/base_system.mk
+@@ -78,6 +78,7 @@ PRODUCT_PACKAGES += \
+     dnsmasq \
+     DownloadProvider \
+     dpm \
++    dump.erofs \
+     dumpstate \
+     dumpsys \
+     DynamicSystemInstallationService \
+@@ -88,6 +89,7 @@ PRODUCT_PACKAGES += \
+     framework-minus-apex \
+     framework-res \
+     framework-sysconfig.xml \
++    fsck.erofs \
+     fsck_msdos \
+     fsverity-release-cert-der \
+     fs_config_files_system \
+@@ -211,6 +213,7 @@ PRODUCT_PACKAGES += \
+     MediaProviderLegacy \
+     mediaserver \
+     mke2fs \
++    mkfs.erofs \
+     monkey \
+     mtpd \
+     ndc \
+@@ -316,9 +319,11 @@ PRODUCT_HOST_PACKAGES += \
+     atest \
+     bcc \
+     bit \
++    dump.erofs \
+     e2fsck \
+     fastboot \
+     flags_health_check \
++    fsck.erofs \
+     icu-data_host_i18n_apex \
+     icu_tzdata.dat_host_tzdata_apex \
+     idmap2 \
+@@ -328,6 +333,7 @@ PRODUCT_HOST_PACKAGES += \
+     mdnsd \
+     minigzip \
+     mke2fs \
++    mkfs.erofs \
+     resize2fs \
+     sgdisk \
+     sqlite3 \
+diff --git a/tools/releasetools/Android.bp b/tools/releasetools/Android.bp
+index 5ee53c843..7cd41d101 100644
+--- a/tools/releasetools/Android.bp
++++ b/tools/releasetools/Android.bp
+@@ -55,7 +55,9 @@ python_defaults {
+     required: [
+         "blk_alloc_to_base_fs",
+         "e2fsck",
+-        "mkerofsimage.sh",
++        "fsck.erofs",
++        "img2simg",
++        "mkfs.erofs",
+         "mkuserimg_mke2fs",
+         "simg2img",
+         "tune2fs",
+diff --git a/tools/releasetools/build_image.py b/tools/releasetools/build_image.py
+index 5099eccaf..645fff3e1 100755
+--- a/tools/releasetools/build_image.py
++++ b/tools/releasetools/build_image.py
+@@ -231,6 +231,22 @@ def CheckHeadroom(ext4fs_output, prop_dict):
+             mount_point, total_blocks, used_blocks, headroom_blocks,
+             adjusted_blocks))
+ 
++def CalculateSizeAndReserved(prop_dict, size):
++  fs_type = prop_dict.get("fs_type", "")
++  partition_headroom = int(prop_dict.get("partition_headroom", 0))
++  # If not specified, give us 16MB margin for GetDiskUsage error ...
++  reserved_size = int(prop_dict.get("partition_reserved_size", BYTES_IN_MB * 16))
++
++  if fs_type == "erofs":
++    reserved_size = int(prop_dict.get("partition_reserved_size", 0))
++    if reserved_size == 0:
++      # give .3% margin or a minimum size for AVB footer
++      return max(size * 1003 // 1000, 256 * 1024)
++
++  if fs_type.startswith("ext4") and partition_headroom > reserved_size:
++    reserved_size = partition_headroom
++
++  return size + reserved_size
+ 
+ def BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config):
+   """Builds a pure image for the files under in_dir and writes it to out_file.
+@@ -251,16 +267,19 @@ def BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config):
+   """
+   build_command = []
+   fs_type = prop_dict.get("fs_type", "")
+-  run_e2fsck = False
++  run_fsck = None
+   needs_projid = prop_dict.get("needs_projid", 0)
+   needs_casefold = prop_dict.get("needs_casefold", 0)
+   needs_compress = prop_dict.get("needs_compress", 0)
+ 
++  disable_sparse = "disable_sparse" in prop_dict
++  manual_sparse = False
++
+   if fs_type.startswith("ext"):
+     build_command = [prop_dict["ext_mkuserimg"]]
+-    if "extfs_sparse_flag" in prop_dict:
++    if "extfs_sparse_flag" in prop_dict and not disable_sparse:
+       build_command.append(prop_dict["extfs_sparse_flag"])
+-      run_e2fsck = True
++      run_e2fsck = RunE2fsck
+     build_command.extend([in_dir, out_file, fs_type,
+                           prop_dict["mount_point"]])
+     build_command.append(prop_dict["image_size"])
+@@ -301,25 +320,43 @@ def BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config):
+     if "selinux_fc" in prop_dict:
+       build_command.append(prop_dict["selinux_fc"])
+   elif fs_type.startswith("erofs"):
+-    build_command = ["mkerofsimage.sh"]
+-    build_command.extend([in_dir, out_file])
+-    if "erofs_sparse_flag" in prop_dict:
+-      build_command.extend([prop_dict["erofs_sparse_flag"]])
+-    build_command.extend(["-m", prop_dict["mount_point"]])
++    build_command = ["mkfs.erofs"]
++
++    compressor = None
++    if "erofs_default_compressor" in prop_dict:
++      compressor = prop_dict["erofs_default_compressor"]
++    if "erofs_compressor" in prop_dict:
++      compressor = prop_dict["erofs_compressor"]
++    if compressor:
++      build_command.extend(["-z", compressor])
++
++    build_command.extend(["--mount-point", prop_dict["mount_point"]])
+     if target_out:
+-      build_command.extend(["-d", target_out])
++      build_command.extend(["--product-out", target_out])
+     if fs_config:
+-      build_command.extend(["-C", fs_config])
++      build_command.extend(["--fs-config-file", fs_config])
+     if "selinux_fc" in prop_dict:
+-      build_command.extend(["-c", prop_dict["selinux_fc"]])
++      build_command.extend(["--file-contexts", prop_dict["selinux_fc"]])
+     if "timestamp" in prop_dict:
+       build_command.extend(["-T", str(prop_dict["timestamp"])])
+     if "uuid" in prop_dict:
+       build_command.extend(["-U", prop_dict["uuid"]])
++    if "block_list" in prop_dict:
++      build_command.extend(["--block-list-file", prop_dict["block_list"]])
++    if "erofs_pcluster_size" in prop_dict:
++      build_command.extend(["-C", prop_dict["erofs_pcluster_size"]])
++    if "erofs_share_dup_blocks" in prop_dict:
++      build_command.extend(["--chunksize", "4096"])
++
++    build_command.extend([out_file, in_dir])
++    if "erofs_sparse_flag" in prop_dict and not disable_sparse:
++      manual_sparse = True
++
++    run_fsck = RunErofsFsck
+   elif fs_type.startswith("squash"):
+     build_command = ["mksquashfsimage.sh"]
+     build_command.extend([in_dir, out_file])
+-    if "squashfs_sparse_flag" in prop_dict:
++    if "squashfs_sparse_flag" in prop_dict and not disable_sparse:
+       build_command.extend([prop_dict["squashfs_sparse_flag"]])
+     build_command.extend(["-m", prop_dict["mount_point"]])
+     if target_out:
+@@ -341,7 +378,7 @@ def BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config):
+   elif fs_type.startswith("f2fs"):
+     build_command = ["mkf2fsuserimg.sh"]
+     build_command.extend([out_file, prop_dict["image_size"]])
+-    if "f2fs_sparse_flag" in prop_dict:
++    if "f2fs_sparse_flag" in prop_dict and not disable_sparse:
+       build_command.extend([prop_dict["f2fs_sparse_flag"]])
+     if fs_config:
+       build_command.extend(["-C", fs_config])
+@@ -401,19 +438,38 @@ def BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config):
+               int(prop_dict["partition_size"]) // BYTES_IN_MB))
+     raise
+ 
+-  if run_e2fsck and prop_dict.get("skip_fsck") != "true":
+-    unsparse_image = UnsparseImage(out_file, replace=False)
++  if run_fsck and prop_dict.get("skip_fsck") != "true":
++    run_fsck(out_file)
+ 
+-    # Run e2fsck on the inflated image file
+-    e2fsck_command = ["e2fsck", "-f", "-n", unsparse_image]
+-    try:
+-      common.RunAndCheckOutput(e2fsck_command)
+-    finally:
+-      os.remove(unsparse_image)
++  if manual_sparse:
++    temp_file = out_file + ".sparse"
++    img2simg_argv = ["img2simg", out_file, temp_file]
++    common.RunAndCheckOutput(img2simg_argv)
++    os.rename(temp_file, out_file)
+ 
+   return mkfs_output
+ 
+ 
++def RunE2fsck(out_file):
++  unsparse_image = UnsparseImage(out_file, replace=False)
++
++  # Run e2fsck on the inflated image file
++  e2fsck_command = ["e2fsck", "-f", "-n", unsparse_image]
++  try:
++    common.RunAndCheckOutput(e2fsck_command)
++  finally:
++    os.remove(unsparse_image)
++
++
++def RunErofsFsck(out_file):
++  fsck_command = ["fsck.erofs", "--extract", out_file]
++  try:
++    common.RunAndCheckOutput(fsck_command)
++  except:
++    print("Check failed for EROFS image {}".format(out_file))
++    raise
++
++
+ def BuildImage(in_dir, prop_dict, out_file, target_out=None):
+   """Builds an image for the files under in_dir and writes it to out_file.
+ 
+@@ -445,27 +501,25 @@ def BuildImage(in_dir, prop_dict, out_file, target_out=None):
+   # or None if not applicable.
+   verity_image_builder = verity_utils.CreateVerityImageBuilder(prop_dict)
+ 
++  disable_sparse = "disable_sparse" in prop_dict
++  mkfs_output = None
+   if (prop_dict.get("use_dynamic_partition_size") == "true" and
+       "partition_size" not in prop_dict):
+     # If partition_size is not defined, use output of `du' + reserved_size.
+     # For compressed file system, it's better to use the compressed size to avoid wasting space.
+     if fs_type.startswith("erofs"):
+-      tmp_dict = prop_dict.copy()
+-      if "erofs_sparse_flag" in tmp_dict:
+-        tmp_dict.pop("erofs_sparse_flag")
+-      BuildImageMkfs(in_dir, tmp_dict, out_file, target_out, fs_config)
+-      size = GetDiskUsage(out_file)
+-      os.remove(out_file)
++      mkfs_output = BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config)
++      if "erofs_sparse_flag" in prop_dict and not disable_sparse:
++        image_path = UnsparseImage(out_file, replace=False)
++        size = GetDiskUsage(image_path)
++        os.remove(image_path)
++      else:
++        size = GetDiskUsage(out_file)
+     else:
+       size = GetDiskUsage(in_dir)
+     logger.info(
+         "The tree size of %s is %d MB.", in_dir, size // BYTES_IN_MB)
+-    # If not specified, give us 16MB margin for GetDiskUsage error ...
+-    reserved_size = int(prop_dict.get("partition_reserved_size", BYTES_IN_MB * 16))
+-    partition_headroom = int(prop_dict.get("partition_headroom", 0))
+-    if fs_type.startswith("ext4") and partition_headroom > reserved_size:
+-      reserved_size = partition_headroom
+-    size += reserved_size
++    size = CalculateSizeAndReserved(prop_dict, size)
+     # Round this up to a multiple of 4K so that avbtool works
+     size = common.RoundUpTo4K(size)
+     if fs_type.startswith("ext"):
+@@ -478,7 +532,7 @@ def BuildImage(in_dir, prop_dict, out_file, target_out=None):
+           size // BYTES_IN_MB, prop_dict["extfs_inode_count"])
+       BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config)
+       sparse_image = False
+-      if "extfs_sparse_flag" in prop_dict:
++      if "extfs_sparse_flag" in prop_dict and not disable_sparse:
+         sparse_image = True
+       fs_dict = GetFilesystemCharacteristics(fs_type, out_file, sparse_image)
+       os.remove(out_file)
+@@ -523,7 +577,7 @@ def BuildImage(in_dir, prop_dict, out_file, target_out=None):
+       prop_dict["image_size"] = str(size)
+       BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config)
+       sparse_image = False
+-      if "f2fs_sparse_flag" in prop_dict:
++      if "f2fs_sparse_flag" in prop_dict and not disable_sparse:
+         sparse_image = True
+       fs_dict = GetFilesystemCharacteristics(fs_type, out_file, sparse_image)
+       os.remove(out_file)
+@@ -544,7 +598,12 @@ def BuildImage(in_dir, prop_dict, out_file, target_out=None):
+     max_image_size = verity_image_builder.CalculateMaxImageSize()
+     prop_dict["image_size"] = str(max_image_size)
+ 
+-  mkfs_output = BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config)
++  if not mkfs_output:
++    mkfs_output = BuildImageMkfs(in_dir, prop_dict, out_file, target_out, fs_config)
++
++  # Update the image (eg filesystem size). This can be different eg if mkfs
++  # rounds the requested size down due to alignment.
++  prop_dict["image_size"] = common.sparse_img.GetImagePartitionSize(out_file)
+ 
+   # Check if there's enough headroom space available for ext4 image.
+   if "partition_headroom" in prop_dict and fs_type.startswith("ext4"):
+@@ -588,6 +647,9 @@ def ImagePropFromGlobalDict(glob_dict, mount_point):
+ 
+   common_props = (
+       "extfs_sparse_flag",
++      "erofs_default_compressor",
++      "erofs_pcluster_size",
++      "erofs_share_dup_blocks",
+       "erofs_sparse_flag",
+       "squashfs_sparse_flag",
+       "system_f2fs_compress",
+@@ -607,238 +669,90 @@ def ImagePropFromGlobalDict(glob_dict, mount_point):
+   for p in common_props:
+     copy_prop(p, p)
+ 
++  ro_mount_points = set([
++      "odm",
++      "odm_dlkm",
++      "oem",
++      "product",
++      "system",
++      "system_ext",
++      "system_other",
++      "vendor",
++      "vendor_dlkm",
++  ])
++
++  # Tuple layout: (readonly, specific prop, general prop)
++  fmt_props = (
++      # Generic first, then specific file type.
++      (False, "fs_type", "fs_type"),
++      (False, "{}_fs_type", "fs_type"),
++
++      # Ordering for these doesn't matter.
++      (False, "{}_selinux_fc", "selinux_fc"),
++      (False, "{}_size", "partition_size"),
++      (True, "avb_{}_add_hashtree_footer_args", "avb_add_hashtree_footer_args"),
++      (True, "avb_{}_algorithm", "avb_algorithm"),
++      (True, "avb_{}_hashtree_enable", "avb_hashtree_enable"),
++      (True, "avb_{}_key_path", "avb_key_path"),
++      (True, "avb_{}_salt", "avb_salt"),
++      (True, "ext4_share_dup_blocks", "ext4_share_dup_blocks"),
++      (True, "{}_base_fs_file", "base_fs_file"),
++      (True, "{}_disable_sparse", "disable_sparse"),
++      (True, "{}_erofs_compressor", "erofs_compressor"),
++      (True, "{}_erofs_pcluster_size", "erofs_pcluster_size"),
++      (True, "{}_erofs_share_dup_blocks", "erofs_share_dup_blocks"),
++      (True, "{}_extfs_inode_count", "extfs_inode_count"),
++      (True, "{}_f2fs_compress", "f2fs_compress"),
++      (True, "{}_f2fs_sldc_flags", "f2fs_sldc_flags"),
++      (True, "{}_reserved_size", "partition_reserved_size"),
++      (True, "{}_squashfs_block_size", "squashfs_block_size"),
++      (True, "{}_squashfs_compressor", "squashfs_compressor"),
++      (True, "{}_squashfs_compressor_opt", "squashfs_compressor_opt"),
++      (True, "{}_squashfs_disable_4k_align", "squashfs_disable_4k_align"),
++      (True, "{}_verity_block_device", "verity_block_device"),
++  )
++
++  # Translate prefixed properties into generic ones.
++  if mount_point == "data":
++    prefix = "userdata"
++  else:
++    prefix = mount_point
++
++  for readonly, src_prop, dest_prop in fmt_props:
++    if readonly and mount_point not in ro_mount_points:
++      continue
++
++    if mount_point == "system_other":
++      # Propagate system properties to system_other. They'll get overridden
++      # after as needed.
++      copy_prop(src_prop.format("system"), dest_prop)
++
++    copy_prop(src_prop.format(prefix), dest_prop)
++
++  # Set prefixed properties that need a default value.
++  if mount_point in ro_mount_points:
++    prop = "{}_journal_size".format(prefix)
++    if not copy_prop(prop, "journal_size"):
++      d["journal_size"] = "0"
++
++    prop = "{}_extfs_rsv_pct".format(prefix)
++    if not copy_prop(prop, "extfs_rsv_pct"):
++      d["extfs_rsv_pct"] = "0"
++
++  # Copy partition-specific properties.
+   d["mount_point"] = mount_point
+   if mount_point == "system":
+-    copy_prop("avb_system_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_system_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_system_key_path", "avb_key_path")
+-    copy_prop("avb_system_algorithm", "avb_algorithm")
+-    copy_prop("avb_system_salt", "avb_salt")
+-    copy_prop("fs_type", "fs_type")
+-    # Copy the generic system fs type first, override with specific one if
+-    # available.
+-    copy_prop("system_fs_type", "fs_type")
+     copy_prop("system_headroom", "partition_headroom")
+-    copy_prop("system_size", "partition_size")
+-    if not copy_prop("system_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("system_verity_block_device", "verity_block_device")
+     copy_prop("system_root_image", "system_root_image")
+     copy_prop("root_dir", "root_dir")
+     copy_prop("root_fs_config", "root_fs_config")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("system_f2fs_compress", "f2fs_compress")
+-    copy_prop("system_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    copy_prop("system_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("system_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("system_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("system_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("system_base_fs_file", "base_fs_file")
+-    copy_prop("system_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("system_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("system_reserved_size", "partition_reserved_size")
+-    copy_prop("system_selinux_fc", "selinux_fc")
+-  elif mount_point == "system_other":
+-    # We inherit the selinux policies of /system since we contain some of its
+-    # files.
+-    copy_prop("avb_system_other_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_system_other_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_system_other_key_path", "avb_key_path")
+-    copy_prop("avb_system_other_algorithm", "avb_algorithm")
+-    copy_prop("avb_system_other_salt", "avb_salt")
+-    copy_prop("fs_type", "fs_type")
+-    copy_prop("system_fs_type", "fs_type")
+-    copy_prop("system_other_size", "partition_size")
+-    if not copy_prop("system_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("system_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("system_f2fs_compress", "f2fs_compress")
+-    copy_prop("system_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    copy_prop("system_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("system_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("system_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("system_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("system_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("system_reserved_size", "partition_reserved_size")
+-    copy_prop("system_selinux_fc", "selinux_fc")
+   elif mount_point == "data":
+     # Copy the generic fs type first, override with specific one if available.
+-    copy_prop("fs_type", "fs_type")
+-    copy_prop("userdata_fs_type", "fs_type")
+-    copy_prop("userdata_size", "partition_size")
+     copy_prop("flash_logical_block_size", "flash_logical_block_size")
+     copy_prop("flash_erase_block_size", "flash_erase_block_size")
+-    copy_prop("userdata_selinux_fc", "selinux_fc")
+     copy_prop("needs_casefold", "needs_casefold")
+     copy_prop("needs_projid", "needs_projid")
+     copy_prop("needs_compress", "needs_compress")
+-  elif mount_point == "cache":
+-    copy_prop("cache_fs_type", "fs_type")
+-    copy_prop("cache_size", "partition_size")
+-    copy_prop("cache_selinux_fc", "selinux_fc")
+-  elif mount_point == "vendor":
+-    copy_prop("avb_vendor_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_vendor_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_vendor_key_path", "avb_key_path")
+-    copy_prop("avb_vendor_algorithm", "avb_algorithm")
+-    copy_prop("avb_vendor_salt", "avb_salt")
+-    copy_prop("vendor_fs_type", "fs_type")
+-    copy_prop("vendor_size", "partition_size")
+-    if not copy_prop("vendor_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("vendor_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("vendor_f2fs_compress", "f2fs_compress")
+-    copy_prop("vendor_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    copy_prop("vendor_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("vendor_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("vendor_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("vendor_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("vendor_base_fs_file", "base_fs_file")
+-    copy_prop("vendor_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("vendor_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("vendor_reserved_size", "partition_reserved_size")
+-    copy_prop("vendor_selinux_fc", "selinux_fc")
+-  elif mount_point == "product":
+-    copy_prop("avb_product_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_product_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_product_key_path", "avb_key_path")
+-    copy_prop("avb_product_algorithm", "avb_algorithm")
+-    copy_prop("avb_product_salt", "avb_salt")
+-    copy_prop("product_fs_type", "fs_type")
+-    copy_prop("product_size", "partition_size")
+-    if not copy_prop("product_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("product_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("product_f2fs_compress", "f2fs_compress")
+-    copy_prop("product_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    copy_prop("product_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("product_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("product_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("product_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("product_base_fs_file", "base_fs_file")
+-    copy_prop("product_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("product_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("product_reserved_size", "partition_reserved_size")
+-    copy_prop("product_selinux_fc", "selinux_fc")
+-  elif mount_point == "system_ext":
+-    copy_prop("avb_system_ext_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_system_ext_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_system_ext_key_path", "avb_key_path")
+-    copy_prop("avb_system_ext_algorithm", "avb_algorithm")
+-    copy_prop("avb_system_ext_salt", "avb_salt")
+-    copy_prop("system_ext_fs_type", "fs_type")
+-    copy_prop("system_ext_size", "partition_size")
+-    if not copy_prop("system_ext_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("system_ext_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("system_ext_f2fs_compress", "f2fs_compress")
+-    copy_prop("system_ext_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    copy_prop("system_ext_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("system_ext_squashfs_compressor_opt",
+-              "squashfs_compressor_opt")
+-    copy_prop("system_ext_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("system_ext_squashfs_disable_4k_align",
+-              "squashfs_disable_4k_align")
+-    copy_prop("system_ext_base_fs_file", "base_fs_file")
+-    copy_prop("system_ext_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("system_ext_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("system_ext_reserved_size", "partition_reserved_size")
+-    copy_prop("system_ext_selinux_fc", "selinux_fc")
+-  elif mount_point == "odm":
+-    copy_prop("avb_odm_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_odm_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_odm_key_path", "avb_key_path")
+-    copy_prop("avb_odm_algorithm", "avb_algorithm")
+-    copy_prop("avb_odm_salt", "avb_salt")
+-    copy_prop("odm_fs_type", "fs_type")
+-    copy_prop("odm_size", "partition_size")
+-    if not copy_prop("odm_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("odm_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("odm_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("odm_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("odm_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("odm_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("odm_base_fs_file", "base_fs_file")
+-    copy_prop("odm_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("odm_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("odm_reserved_size", "partition_reserved_size")
+-    copy_prop("odm_selinux_fc", "selinux_fc")
+-  elif mount_point == "vendor_dlkm":
+-    copy_prop("avb_vendor_dlkm_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_vendor_dlkm_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_vendor_dlkm_key_path", "avb_key_path")
+-    copy_prop("avb_vendor_dlkm_algorithm", "avb_algorithm")
+-    copy_prop("avb_vendor_dlkm_salt", "avb_salt")
+-    copy_prop("vendor_dlkm_fs_type", "fs_type")
+-    copy_prop("vendor_dlkm_size", "partition_size")
+-    copy_prop("vendor_dlkm_f2fs_compress", "f2fs_compress")
+-    copy_prop("vendor_dlkm_f2fs_sldc_flags", "f2fs_sldc_flags")
+-    if not copy_prop("vendor_dlkm_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("vendor_dlkm_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("vendor_dlkm_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("vendor_dlkm_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("vendor_dlkm_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("vendor_dlkm_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("vendor_dlkm_base_fs_file", "base_fs_file")
+-    copy_prop("vendor_dlkm_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("vendor_dlkm_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("vendor_dlkm_reserved_size", "partition_reserved_size")
+-    copy_prop("vendor_dlkm_selinux_fc", "selinux_fc")
+-  elif mount_point == "odm_dlkm":
+-    copy_prop("avb_odm_dlkm_hashtree_enable", "avb_hashtree_enable")
+-    copy_prop("avb_odm_dlkm_add_hashtree_footer_args",
+-              "avb_add_hashtree_footer_args")
+-    copy_prop("avb_odm_dlkm_key_path", "avb_key_path")
+-    copy_prop("avb_odm_dlkm_algorithm", "avb_algorithm")
+-    copy_prop("avb_odm_dlkm_salt", "avb_salt")
+-    copy_prop("odm_dlkm_fs_type", "fs_type")
+-    copy_prop("odm_dlkm_size", "partition_size")
+-    if not copy_prop("odm_dlkm_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("odm_dlkm_verity_block_device", "verity_block_device")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    copy_prop("odm_dlkm_squashfs_compressor", "squashfs_compressor")
+-    copy_prop("odm_dlkm_squashfs_compressor_opt", "squashfs_compressor_opt")
+-    copy_prop("odm_dlkm_squashfs_block_size", "squashfs_block_size")
+-    copy_prop("odm_dlkm_squashfs_disable_4k_align", "squashfs_disable_4k_align")
+-    copy_prop("odm_dlkm_base_fs_file", "base_fs_file")
+-    copy_prop("odm_dlkm_extfs_inode_count", "extfs_inode_count")
+-    if not copy_prop("odm_dlkm_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("odm_dlkm_reserved_size", "partition_reserved_size")
+-    copy_prop("odm_dlkm_selinux_fc", "selinux_fc")
+-  elif mount_point == "oem":
+-    copy_prop("fs_type", "fs_type")
+-    copy_prop("oem_size", "partition_size")
+-    if not copy_prop("oem_journal_size", "journal_size"):
+-      d["journal_size"] = "0"
+-    copy_prop("oem_extfs_inode_count", "extfs_inode_count")
+-    copy_prop("ext4_share_dup_blocks", "ext4_share_dup_blocks")
+-    if not copy_prop("oem_extfs_rsv_pct", "extfs_rsv_pct"):
+-      d["extfs_rsv_pct"] = "0"
+-    copy_prop("oem_selinux_fc", "selinux_fc")
+   d["partition_name"] = mount_point
+   return d
+ 
+diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
+index 6e3cd70a8..692f117f8 100644
+--- a/tools/releasetools/common.py
++++ b/tools/releasetools/common.py
+@@ -2030,6 +2030,8 @@ def GetUserImage(which, tmpdir, input_zip,
+     info_dict = LoadInfoDict(input_zip)
+ 
+   is_sparse = info_dict.get("extfs_sparse_flag")
++  if info_dict.get(which + "_disable_sparse"):
++    is_sparse = False
+ 
+   # When target uses 'BOARD_EXT4_SHARE_DUP_BLOCKS := true', images may contain
+   # shared blocks (i.e. some blocks will show up in multiple files' block
+@@ -3942,12 +3944,14 @@ def GetCareMap(which, imgname):
+   if not image_size:
+     return None
+ 
++  disable_sparse = OPTIONS.info_dict.get(which + "_disable_sparse")
++
+   image_blocks = int(image_size) // 4096 - 1
+   assert image_blocks > 0, "blocks for {} must be positive".format(which)
+ 
+   # For sparse images, we will only check the blocks that are listed in the care
+   # map, i.e. the ones with meaningful data.
+-  if "extfs_sparse_flag" in OPTIONS.info_dict:
++  if "extfs_sparse_flag" in OPTIONS.info_dict and not disable_sparse:
+     simg = sparse_img.SparseImage(imgname)
+     care_map_ranges = simg.care_map.intersect(
+         rangelib.RangeSet("0-{}".format(image_blocks)))
+-- 
+2.36.1
+
