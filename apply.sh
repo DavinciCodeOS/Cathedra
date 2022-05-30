@@ -63,6 +63,11 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	git am -3 $CATHEDRA_PATH/dcos/patches/0008-libc-switch-to-jemalloc-from-scudo.patch
 	cd $BASE_BUILD_DIR
 
+	cd system/extras
+	echo "[i] Applying 0012-add-fstab-entry-for-erofs-postinstall.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/0012-add-fstab-entry-for-erofs-postinstall.patch
+	cd $BASE_BUILD_DIR
+
 	echo "[i] Installing boot animation..."
 	cp -f $CATHEDRA_PATH/dcos/assets/bootanimation.zip vendor/aosp/bootanimation/bootanimation_1080.zip
 fi
