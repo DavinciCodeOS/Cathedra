@@ -33,6 +33,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	git am -3 $CATHEDRA_PATH/dcos/patches/0002-vendor-davincicodeos-rebrand.patch
 	echo "[i] Applying 0005-vendor-fix-themedicons-path.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0005-vendor-fix-themedicons-path.patch
+	echo "[i] Applying 0013-build-Flatten-APEXs-for-performance.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/0013-build-Flatten-APEXs-for-performance.patch
 	cd $BASE_BUILD_DIR
 
 	cd build/tools

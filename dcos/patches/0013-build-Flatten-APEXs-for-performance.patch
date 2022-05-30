@@ -1,0 +1,52 @@
+From 29222246f934c354f529be3660f53a2aeca7086a Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Wed, 7 Oct 2020 12:53:16 -0700
+Subject: [PATCH 1/1] build: Flatten APEXs for performance
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+APEXs have quite a bit of overhead in updatable form: they are ext4
+filesystems mounted using loopback block devices, stored on yet another
+ext4 filesystem (system or vendor). They also increase boot time
+substantially due to needing to set up and mount 27 images with AVB. On
+a Pixel 2 XL, apexd-bootstrap took 485 ms during boot, and apexd took
+471 ms for a total of 955 ms — nearly a second — spent on APEX setup,
+which is quite significant for modern devices. At least 422 ms out of
+that was spent blocking the rest of the system's initialization, but the
+overall slowdown is likely greater due to increased system load.
+
+Updatable APEXs likely also come with a non-negligible amount of memory
+overhead due to setting up and mounting so many filesystem images, as
+well as AVB and potential double-caching effects caused by having two
+layers of filesystems in use.
+
+Being able to update APEXs is useless for us anyway because we don't
+use Google's prebuilt modules and we have no other way to deliver APEX
+updates. Even if we were able to use Google's modules, we still want to
+be able to modify many of the APEX modules, so we need to build them
+from source.
+
+Flattened APEXs have negligible overhead, since they're just stored as
+directories in /<partition>/apex and bind-mounted to /apex/<pkg name>.
+---
+ config/common.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/config/common.mk b/config/common.mk
+index 2d02bc05..df4d638f 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -208,6 +208,9 @@ PRODUCT_COPY_FILES += \
+     frameworks/native/data/etc/android.hardware.biometrics.face.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/android.hardware.biometrics.face.xml
+ endif
+ 
++# Flatten APEXs for performance
++OVERRIDE_TARGET_FLATTEN_APEX := true
++
+ # Repainter integration
+ PRODUCT_PACKAGES += \
+     RepainterServicePriv
+-- 
+2.36.1
+
