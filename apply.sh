@@ -82,8 +82,6 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0001-LockscreenCharging-squashed-1-3.patch
 	echo "[i] Applying 0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0004-KeyguardIndication-Fix-glitchy-charging-info-on-lock.patch
-	echo "[i] Applying 0006-allow-toggling-screen-off-fod-1-2.patch"
-	git am -3 $CATHEDRA_PATH/dcosx/patches/0006-allow-toggling-screen-off-fod-1-2.patch
 	echo "[i] Applying 0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0008-Add-toggle-to-disable-battery-estimates-in-QS-1-2.patch
 	echo "[i] Applying 0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch"
@@ -105,8 +103,6 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	cd packages/apps/Settings
 	echo "[i] Applying 0003-LockscreenCharging-squashed-3-3.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0003-LockscreenCharging-squashed-3-3.patch
-	echo "[i] Applying 0007-allow-toggling-screen-off-fod-2-2.patch"
-	git am -3 $CATHEDRA_PATH/dcosx/patches/0007-allow-toggling-screen-off-fod-2-2.patch
 	echo "[i] Applying 0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
 	echo "[i] Applying 0017-Settings-introduce-app-lock-3-4.patch"
