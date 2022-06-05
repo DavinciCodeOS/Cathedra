@@ -1,0 +1,31 @@
+From a1d8b18900e26e16e374e90b5284da337b70a610 Mon Sep 17 00:00:00 2001
+From: Mitch Phillips <mitchp@google.com>
+Date: Thu, 28 Apr 2022 16:15:15 -0700
+Subject: [PATCH] Fix deprecated error-limit linker flag.
+
+Newer versions of lld require double dashes. This unblocks a future
+toolchain roll.
+
+Test: Build with newer toolchain.
+Bug: N/A
+Change-Id: Ie4725addcfd85f59fe428bbdced1b397c46192d4
+---
+ Tethering/Android.bp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Tethering/Android.bp b/Tethering/Android.bp
+index b5054cf0c..02d3c7495 100644
+--- a/Tethering/Android.bp
++++ b/Tethering/Android.bp
+@@ -102,7 +102,7 @@ cc_library {
+         "-Wthread-safety",
+     ],
+ 
+-    ldflags: ["-Wl,--exclude-libs=ALL,-error-limit=0"],
++    ldflags: ["-Wl,--exclude-libs=ALL,--error-limit=0"],
+ }
+ 
+ // Common defaults for compiling the actual APK.
+-- 
+2.36.1
+

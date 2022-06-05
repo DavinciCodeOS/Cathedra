@@ -1,0 +1,67 @@
+From 455dfcb268a10ce03004c6e07e536d062468783c Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 16:19:34 +0300
+Subject: [PATCH] rust: Backport to old soong
+
+---
+ Android.bp             | 7 +------
+ soong/rustprebuilts.go | 4 ++--
+ 2 files changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 9a16d95..06056ce 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -59,8 +59,6 @@ rust_defaults {
+     sysroot: true,
+     native_bridge_supported: true,
+     product_available: true,
+-    ramdisk_available: true,
+-    recovery_available: true,
+     vendor_available: true,
+     vendor_ramdisk_available: true,
+     apex_available: [
+@@ -68,7 +66,7 @@ rust_defaults {
+         "//apex_available:anyapex",
+     ],
+     target: {
+-        glibc: {
++        linux_glibc: {
+             enabled: false,
+         },
+         darwin: {
+@@ -269,9 +267,6 @@ rust_toolchain_library {
+         android: {
+             rlibs: ["libpanic_abort.rust_sysroot"],
+         },
+-        musl: {
+-            rlibs: ["libpanic_unwind.rust_sysroot"],
+-        },
+     },
+     toolchain_src: stdlibs_src_path + "/library/std/src/lib.rs",
+     cfgs: ["backtrace_in_libstd"],
+diff --git a/soong/rustprebuilts.go b/soong/rustprebuilts.go
+index cc52f60..dbec74d 100644
+--- a/soong/rustprebuilts.go
++++ b/soong/rustprebuilts.go
+@@ -109,7 +109,7 @@ func rustHostPrebuiltSysrootLibrary(ctx android.LoadHookContext) {
+ 	p := &props{}
+ 	p.Enabled = proptools.BoolPtr(false)
+ 
+-	if ctx.Config().BuildOS == android.Linux {
++	if android.BuildOs.Linux() {
+ 		// The suffixes are the same between the dylib and the rlib,
+ 		// so we only need to collect this value once for each target.
+ 		linux64Dir := path.Join("linux-x86", rustDir, "x86_64-unknown-linux-gnu", "lib")
+@@ -132,7 +132,7 @@ func rustHostPrebuiltSysrootLibrary(ctx android.LoadHookContext) {
+ 		p.Target.Linux_glibc_x86.Link_dirs = []string{linux32Dir}
+ 		p.Target.Linux_glibc_x86.Enabled = proptools.BoolPtr(true)
+ 
+-	} else if ctx.Config().BuildOS == android.Darwin {
++	} else if android.BuildOs == android.Darwin {
+ 		darwinDir := path.Join("darwin-x86", rustDir, "x86_64-apple-darwin", "lib")
+ 		darwinDylib, darwinSuffix := getPrebuilt(ctx, darwinDir, name, ".dylib")
+ 		darwinRlib, _ := getPrebuilt(ctx, darwinDir, name, ".rlib")
+-- 
+2.36.1
+

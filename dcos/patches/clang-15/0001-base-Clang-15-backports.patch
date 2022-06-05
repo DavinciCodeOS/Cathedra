@@ -1,0 +1,56 @@
+From ca6b91d39661e8326a7473a18dea1faf348385e1 Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 16:03:30 +0300
+Subject: [PATCH] base: Clang 15 backports
+
+Change-Id: I008fcf03fd3964a9b69f7d68f8e775644143794d
+---
+ cmds/idmap2/Android.bp                | 5 +++++
+ cmds/idmap2/idmap2d/Idmap2Service.cpp | 2 --
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/cmds/idmap2/Android.bp b/cmds/idmap2/Android.bp
+index de1bcaea079c..e732fe13e2d6 100644
+--- a/cmds/idmap2/Android.bp
++++ b/cmds/idmap2/Android.bp
+@@ -35,8 +35,11 @@ cc_defaults {
+     tidy_checks_as_errors: [
+         "modernize-*",
+         "-modernize-avoid-c-arrays",
++        "-modernize-concat-nested-namespaces",
+         "-modernize-pass-by-value",
+         "-modernize-replace-disallow-copy-and-assign-macro",
++        "-modernize-return-braced-init-list",
++        "-modernize-use-default-member-init",
+         "-modernize-use-equals-default",
+         "-modernize-use-nodiscard",
+         "-modernize-use-override",
+@@ -49,7 +52,9 @@ cc_defaults {
+         "-readability-braces-around-statements",
+         "-readability-const-return-type",
+         "-readability-convert-member-functions-to-static",
++        "-readability-duplicate-include",
+         "-readability-else-after-return",
++        "-readability-identifier-length",
+         "-readability-named-parameter",
+         "-readability-redundant-access-specifiers",
+         "-readability-uppercase-literal-suffix",
+diff --git a/cmds/idmap2/idmap2d/Idmap2Service.cpp b/cmds/idmap2/idmap2d/Idmap2Service.cpp
+index 2becf0561b34..64edce583b84 100644
+--- a/cmds/idmap2/idmap2d/Idmap2Service.cpp
++++ b/cmds/idmap2/idmap2d/Idmap2Service.cpp
+@@ -39,11 +39,9 @@
+ #include "idmap2/Result.h"
+ #include "idmap2/SysTrace.h"
+ 
+-using android::IPCThreadState;
+ using android::base::StringPrintf;
+ using android::binder::Status;
+ using android::idmap2::BinaryStreamVisitor;
+-using android::idmap2::FabricatedOverlay;
+ using android::idmap2::FabricatedOverlayContainer;
+ using android::idmap2::Idmap;
+ using android::idmap2::IdmapHeader;
+-- 
+2.36.1
+

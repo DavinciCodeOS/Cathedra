@@ -1,0 +1,64 @@
+From 1fd5a1adfbf9d909f178ad00e6fdeff06225de0c Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 16:17:38 +0300
+Subject: [PATCH 2/2] DnsResolver: Remove redundant "using" statements
+
+Change-Id: I95a92c07630c241b9dafa338838145239b1fea87
+---
+ Dns64Configuration.cpp | 1 -
+ DnsProxyListener.cpp   | 1 -
+ DnsTlsSocket.cpp       | 1 -
+ res_cache.cpp          | 1 -
+ 4 files changed, 4 deletions(-)
+
+diff --git a/Dns64Configuration.cpp b/Dns64Configuration.cpp
+index 77a27e7..d6103b1 100644
+--- a/Dns64Configuration.cpp
++++ b/Dns64Configuration.cpp
+@@ -37,7 +37,6 @@
+ namespace android {
+ 
+ using android::base::StringPrintf;
+-using android::net::NetworkDnsEventReported;
+ using netdutils::DumpWriter;
+ using netdutils::IPAddress;
+ using netdutils::IPPrefix;
+diff --git a/DnsProxyListener.cpp b/DnsProxyListener.cpp
+index 2f3ebb0..bcc72de 100644
+--- a/DnsProxyListener.cpp
++++ b/DnsProxyListener.cpp
+@@ -64,7 +64,6 @@
+ using aidl::android::net::metrics::INetdEventListener;
+ using aidl::android::net::resolv::aidl::DnsHealthEventParcel;
+ using aidl::android::net::resolv::aidl::IDnsResolverUnsolicitedEventListener;
+-using android::net::NetworkDnsEventReported;
+ 
+ namespace android {
+ 
+diff --git a/DnsTlsSocket.cpp b/DnsTlsSocket.cpp
+index 80b6417..19d5e7a 100644
+--- a/DnsTlsSocket.cpp
++++ b/DnsTlsSocket.cpp
+@@ -44,7 +44,6 @@
+ 
+ namespace android {
+ 
+-using android::net::Experiments;
+ using base::StringPrintf;
+ using netdutils::enableSockopt;
+ using netdutils::enableTcpKeepAlives;
+diff --git a/res_cache.cpp b/res_cache.cpp
+index 768dc77..8fb1d00 100644
+--- a/res_cache.cpp
++++ b/res_cache.cpp
+@@ -72,7 +72,6 @@ using android::base::StringAppendF;
+ using android::net::DnsQueryEvent;
+ using android::net::DnsStats;
+ using android::net::Experiments;
+-using android::net::PROTO_DOT;
+ using android::net::PROTO_TCP;
+ using android::net::PROTO_UDP;
+ using android::netdutils::DumpWriter;
+-- 
+2.36.1
+

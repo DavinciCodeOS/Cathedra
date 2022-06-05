@@ -1,0 +1,76 @@
+From 7408b218a0e1e20b911e65977102b6b078a44f4d Mon Sep 17 00:00:00 2001
+From: Yi Kong <yikong@google.com>
+Date: Sun, 5 Jun 2022 16:15:25 +0300
+Subject: [PATCH 2/2] Suppress three counts of compiler warnings for frame size
+ limit exceeded
+
+-Wframe-larger-than= was not enforced when LTO is enabled, until the
+upcoming compiler update. Suppress the warnings for now to unblock the
+update process, and then the ART team can reproduce the breakage.
+
+Bug: 197647048
+Test: build
+Change-Id: Ief1d999efaff4e92a1e44b81d56afec87ee43e72
+---
+ runtime/gc/heap.cc |  2 ++
+ runtime/thread.cc  | 10 ++++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/runtime/gc/heap.cc b/runtime/gc/heap.cc
+index 08aaaefa8f..64ae907f1c 100644
+--- a/runtime/gc/heap.cc
++++ b/runtime/gc/heap.cc
+@@ -2308,6 +2308,8 @@ void Heap::IncrementFreedEver() {
+ #  pragma clang diagnostic ignored "-Wframe-larger-than="
+ #endif
+ // This has a large frame, but shouldn't be run anywhere near the stack limit.
++// FIXME: BUT it did exceed... http://b/197647048
++#  pragma clang diagnostic ignored "-Wframe-larger-than="
+ void Heap::PreZygoteFork() {
+   if (!HasZygoteSpace()) {
+     // We still want to GC in case there is some unreachable non moving objects that could cause a
+diff --git a/runtime/thread.cc b/runtime/thread.cc
+index 16a5f93be4..b4baafff9d 100644
+--- a/runtime/thread.cc
++++ b/runtime/thread.cc
+@@ -4124,6 +4124,10 @@ void Thread::VisitReflectiveTargets(ReflectiveValueVisitor* visitor) {
+   }
+ }
+ 
++// FIXME: clang-r433403 reports the below function exceeds frame size limit.
++// http://b/197647048
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wframe-larger-than="
+ template <bool kPrecise>
+ void Thread::VisitRoots(RootVisitor* visitor) {
+   const uint32_t thread_id = GetThreadId();
+@@ -4185,6 +4189,7 @@ void Thread::VisitRoots(RootVisitor* visitor) {
+     visitor->VisitRootIfNonNull(&entry.second.this_object_, RootInfo(kRootVMInternal, thread_id));
+   }
+ }
++#pragma GCC diagnostic pop
+ 
+ void Thread::SweepInterpreterCache(IsMarkedVisitor* visitor) {
+   for (InterpreterCache::Entry& entry : GetInterpreterCache()->GetArray()) {
+@@ -4221,6 +4226,10 @@ void Thread::SweepInterpreterCache(IsMarkedVisitor* visitor) {
+   }
+ }
+ 
++// FIXME: clang-r433403 reports the below function exceeds frame size limit.
++// http://b/197647048
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wframe-larger-than="
+ void Thread::VisitRoots(RootVisitor* visitor, VisitRootFlags flags) {
+   if ((flags & VisitRootFlags::kVisitRootFlagPrecise) != 0) {
+     VisitRoots</* kPrecise= */ true>(visitor);
+@@ -4228,6 +4237,7 @@ void Thread::VisitRoots(RootVisitor* visitor, VisitRootFlags flags) {
+     VisitRoots</* kPrecise= */ false>(visitor);
+   }
+ }
++#pragma GCC diagnostic pop
+ 
+ class VerifyRootVisitor : public SingleRootVisitor {
+  public:
+-- 
+2.36.1
+

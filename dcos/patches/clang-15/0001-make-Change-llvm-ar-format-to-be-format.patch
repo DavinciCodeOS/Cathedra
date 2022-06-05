@@ -1,0 +1,26 @@
+From 3beb2e1d8fa9005a4fb7a7c2e7d9fc56c6309066 Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 15:55:38 +0300
+Subject: [PATCH] make: Change llvm-ar '-format' to be '--format'
+
+Change-Id: I8c12098d394c9daa3eee9fb5be6d83d15cfac058
+---
+ core/combo/select.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/combo/select.mk b/core/combo/select.mk
+index 33c8e6d40..b36bd6576 100644
+--- a/core/combo/select.mk
++++ b/core/combo/select.mk
+@@ -28,7 +28,7 @@ combo_var_prefix := $(combo_2nd_arch_prefix)$(combo_target)
+ 
+ # Set reasonable defaults for the various variables
+ 
+-$(combo_var_prefix)GLOBAL_ARFLAGS := crsPD -format=gnu
++$(combo_var_prefix)GLOBAL_ARFLAGS := crsPD --format=gnu
+ 
+ $(combo_var_prefix)STATIC_LIB_SUFFIX := .a
+ 
+-- 
+2.36.1
+

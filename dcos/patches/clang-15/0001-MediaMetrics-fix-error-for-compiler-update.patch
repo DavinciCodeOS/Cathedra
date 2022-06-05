@@ -1,0 +1,33 @@
+From 221c6d0da2d6d5e0e0a6e84fd2be837d57b0583d Mon Sep 17 00:00:00 2001
+From: Yabin Cui <yabinc@google.com>
+Date: Fri, 16 Jul 2021 11:18:42 -0700
+Subject: [PATCH 1/2] MediaMetrics: fix error for compiler update.
+
+frameworks/av/services/mediametrics/TransactionLog.h:161:19:
+  error: declaration shadows a structured binding [-Werror,-Wshadow]
+            auto [s, l] = dumpMapTimeItem(it->second, ll - 1, sinceNs, prefix);
+                  ^
+
+Bug: 193903230
+Test: build with the next compiler
+Change-Id: Ib9cc931d97f16f7b85b987baaed280802a0f5c8b
+---
+ services/mediametrics/TransactionLog.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/mediametrics/TransactionLog.h b/services/mediametrics/TransactionLog.h
+index 0ca463986d..fd42518b4e 100644
+--- a/services/mediametrics/TransactionLog.h
++++ b/services/mediametrics/TransactionLog.h
+@@ -158,7 +158,7 @@ public:
+                 ++it) {
+             if (ll <= 0) break;
+             if (prefix != nullptr && !startsWith(it->first, prefix)) break;
+-            auto [s, l] = dumpMapTimeItem(it->second, ll - 1, sinceNs, prefix);
++            std::tie(s, l) = dumpMapTimeItem(it->second, ll - 1, sinceNs, prefix);
+             if (l == 0) continue; // don't show empty groups (due to sinceNs).
+             ss << " " << it->first << "\n" << s;
+             ll -= l + 1;
+-- 
+2.36.1
+

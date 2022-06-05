@@ -1,0 +1,61 @@
+From e4cac3b1ba60ce5345764ad4355244595315d030 Mon Sep 17 00:00:00 2001
+From: Yi Kong <yikong@google.com>
+Date: Tue, 31 Aug 2021 14:08:27 +0800
+Subject: [PATCH 2/2] Suppress ordered-compare-function-pointers warning
+
+The affected code are using function pointer comparison for legitimate
+purposes. Suppress the warning.
+
+Bug: 197230471
+Test: build
+Change-Id: Ief9d720ee39b8be6467e127c0d3f14b026eaf9ed
+---
+ camera/ndk/impl/ACameraManager.h            | 3 +++
+ camera/ndk/ndk_vendor/impl/ACameraManager.h | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/camera/ndk/impl/ACameraManager.h b/camera/ndk/impl/ACameraManager.h
+index ccbfaa986b..da887a26e0 100644
+--- a/camera/ndk/impl/ACameraManager.h
++++ b/camera/ndk/impl/ACameraManager.h
+@@ -139,6 +139,8 @@ class CameraManagerGlobal final : public RefBase {
+             return !(*this == other);
+         }
+         bool operator < (const Callback& other) const {
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wordered-compare-function-pointers"
+             if (*this == other) return false;
+             if (mContext != other.mContext) return mContext < other.mContext;
+             if (mPhysicalCamAvailable != other.mPhysicalCamAvailable) {
+@@ -152,6 +154,7 @@ class CameraManagerGlobal final : public RefBase {
+             }
+             if (mAvailable != other.mAvailable) return mAvailable < other.mAvailable;
+             return mUnavailable < other.mUnavailable;
++#pragma GCC diagnostic pop
+         }
+         bool operator > (const Callback& other) const {
+             return (*this != other && !(*this < other));
+diff --git a/camera/ndk/ndk_vendor/impl/ACameraManager.h b/camera/ndk/ndk_vendor/impl/ACameraManager.h
+index 8359bb1842..4663529f6c 100644
+--- a/camera/ndk/ndk_vendor/impl/ACameraManager.h
++++ b/camera/ndk/ndk_vendor/impl/ACameraManager.h
+@@ -136,6 +136,8 @@ class CameraManagerGlobal final : public RefBase {
+             return !(*this == other);
+         }
+         bool operator < (const Callback& other) const {
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wordered-compare-function-pointers"
+             if (*this == other) return false;
+             if (mContext != other.mContext) return mContext < other.mContext;
+             if (mAvailable != other.mAvailable) return mAvailable < other.mAvailable;
+@@ -146,6 +148,7 @@ class CameraManagerGlobal final : public RefBase {
+             if (mPhysicalCamUnavailable != other.mPhysicalCamUnavailable)
+                     return mPhysicalCamUnavailable < other.mPhysicalCamUnavailable;
+             return mUnavailable < other.mUnavailable;
++#pragma GCC diagnostic pop
+         }
+         bool operator > (const Callback& other) const {
+             return (*this != other && !(*this < other));
+-- 
+2.36.1
+

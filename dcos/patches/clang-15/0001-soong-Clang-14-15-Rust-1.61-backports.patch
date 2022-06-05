@@ -1,0 +1,815 @@
+From ba30e8f8d5d41f0b99d664a13c613ae3f295746d Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 15:53:01 +0300
+Subject: [PATCH] soong: Clang 14/15, Rust 1.61 backports
+
+Change-Id: I991a34020a15ac1eaad1f8da800b82bbc20d6668
+---
+ android/paths.go          | 23 +++++++++++
+ cc/androidmk.go           |  2 +-
+ cc/builder.go             | 10 ++++-
+ cc/cc.go                  |  2 +-
+ cc/config/clang.go        | 21 ++++------
+ cc/config/global.go       | 48 ++++++++++++++++++++--
+ cc/config/tidy.go         | 31 +++++++++-----
+ cc/makevars.go            |  1 +
+ cc/ndk_library.go         |  6 +++
+ cc/tidy.go                |  9 +++++
+ rust/Android.bp           |  1 +
+ rust/compiler.go          |  4 +-
+ rust/config/global.go     |  4 +-
+ rust/image.go             | 17 +++++---
+ rust/prebuilt.go          | 22 ++++++++++
+ rust/project_json.go      |  4 ++
+ rust/rust.go              | 17 ++++++--
+ rust/testing.go           | 76 ++++------------------------------
+ rust/toolchain_library.go | 85 +++++++++++++++++++++++++++++++++++++++
+ 19 files changed, 272 insertions(+), 111 deletions(-)
+ create mode 100644 rust/toolchain_library.go
+
+diff --git a/android/paths.go b/android/paths.go
+index 232a4a97a..76c0b3aac 100644
+--- a/android/paths.go
++++ b/android/paths.go
+@@ -20,6 +20,7 @@ import (
+ 	"os"
+ 	"path/filepath"
+ 	"reflect"
++	"regexp"
+ 	"sort"
+ 	"strings"
+ 
+@@ -2090,3 +2091,25 @@ func PathsIfNonNil(paths ...Path) Paths {
+ 	}
+ 	return ret
+ }
++
++var thirdPartyDirPrefixExceptions = []*regexp.Regexp{
++	regexp.MustCompile("^vendor/[^/]*google[^/]*/"),
++	regexp.MustCompile("^hardware/google/"),
++	regexp.MustCompile("^hardware/interfaces/"),
++	regexp.MustCompile("^hardware/libhardware[^/]*/"),
++	regexp.MustCompile("^hardware/ril/"),
++}
++
++func IsThirdPartyPath(path string) bool {
++	thirdPartyDirPrefixes := []string{"external/", "vendor/", "hardware/"}
++
++	if HasAnyPrefix(path, thirdPartyDirPrefixes) {
++		for _, prefix := range thirdPartyDirPrefixExceptions {
++			if prefix.MatchString(path) {
++				return false
++			}
++		}
++		return true
++	}
++	return false
++}
+diff --git a/cc/androidmk.go b/cc/androidmk.go
+index e58d166a3..4f4ab68c4 100644
+--- a/cc/androidmk.go
++++ b/cc/androidmk.go
+@@ -25,7 +25,7 @@ import (
+ 
+ var (
+ 	nativeBridgeSuffix  = ".native_bridge"
+-	productSuffix       = ".product"
++	ProductSuffix       = ".product"
+ 	VendorSuffix        = ".vendor"
+ 	ramdiskSuffix       = ".ramdisk"
+ 	VendorRamdiskSuffix = ".vendor_ramdisk"
+diff --git a/cc/builder.go b/cc/builder.go
+index 51c8a0bdf..458dcc82e 100644
+--- a/cc/builder.go
++++ b/cc/builder.go
+@@ -505,6 +505,14 @@ func transformSourceToObj(ctx android.ModuleContext, subdir string, srcFiles and
+ 	cppflags += " ${config.NoOverrideClangGlobalCflags}"
+ 	toolingCppflags += " ${config.NoOverrideClangGlobalCflags}"
+ 
++	modulePath := android.PathForModuleSrc(ctx).String()
++	if android.IsThirdPartyPath(modulePath) {
++		cflags += " ${config.NoOverrideExternalGlobalCflags}"
++		toolingCflags += " ${config.NoOverrideExternalGlobalCflags}"
++		cppflags += " ${config.NoOverrideExternalGlobalCflags}"
++		toolingCppflags += " ${config.NoOverrideExternalGlobalCflags}"
++	}
++
+ 	for i, srcFile := range srcFiles {
+ 		objFile := android.ObjPathWithExt(ctx, subdir, srcFile, "o")
+ 
+@@ -693,7 +701,7 @@ func transformObjToStaticLib(ctx android.ModuleContext,
+ 	arCmd := "${config.ClangBin}/llvm-ar"
+ 	arFlags := ""
+ 	if !ctx.Darwin() {
+-		arFlags += " -format=gnu"
++		arFlags += " --format=gnu"
+ 	}
+ 
+ 	if len(wholeStaticLibs) == 0 {
+diff --git a/cc/cc.go b/cc/cc.go
+index b0a715762..18f664a27 100644
+--- a/cc/cc.go
++++ b/cc/cc.go
+@@ -1593,7 +1593,7 @@ func (c *Module) getNameSuffixWithVndkVersion(ctx android.ModuleContext) string
+ 			return ""
+ 		}
+ 		vndkVersion = ctx.DeviceConfig().ProductVndkVersion()
+-		nameSuffix = productSuffix
++		nameSuffix = ProductSuffix
+ 	} else {
+ 		vndkVersion = ctx.DeviceConfig().VndkVersion()
+ 		nameSuffix = VendorSuffix
+diff --git a/cc/config/clang.go b/cc/config/clang.go
+index 156909876..e3bf868a5 100644
+--- a/cc/config/clang.go
++++ b/cc/config/clang.go
+@@ -30,36 +30,25 @@ var ClangUnknownCflags = sorted([]string{
+ 	"-fno-tree-sra",
+ 	"-fprefetch-loop-arrays",
+ 	"-funswitch-loops",
+-	"-Werror=unused-but-set-parameter",
+-	"-Werror=unused-but-set-variable",
+ 	"-Wmaybe-uninitialized",
+ 	"-Wno-error=clobbered",
+ 	"-Wno-error=maybe-uninitialized",
+-	"-Wno-error=unused-but-set-parameter",
+-	"-Wno-error=unused-but-set-variable",
+ 	"-Wno-extended-offsetof",
+ 	"-Wno-free-nonheap-object",
+ 	"-Wno-literal-suffix",
+ 	"-Wno-maybe-uninitialized",
+ 	"-Wno-old-style-declaration",
+-	"-Wno-unused-but-set-parameter",
+-	"-Wno-unused-but-set-variable",
+ 	"-Wno-unused-local-typedefs",
+-	"-Wunused-but-set-parameter",
+-	"-Wunused-but-set-variable",
+ 	"-fdiagnostics-color",
+ 	// http://b/153759688
+ 	"-fuse-init-array",
+-
+ 	// arm + arm64
+ 	"-fgcse-after-reload",
+ 	"-frerun-cse-after-loop",
+ 	"-frename-registers",
+ 	"-fno-strict-volatile-bitfields",
+-
+ 	// arm + arm64
+ 	"-fno-align-jumps",
+-
+ 	// arm
+ 	"-mthumb-interwork",
+ 	"-fno-builtin-sin",
+@@ -69,13 +58,11 @@ var ClangUnknownCflags = sorted([]string{
+ 	"-fno-partial-inlining",
+ 	"-fno-tree-copy-prop",
+ 	"-fno-tree-loop-optimize",
+-
+ 	// x86 + x86_64
+ 	"-finline-limit=300",
+ 	"-fno-inline-functions-called-once",
+ 	"-mfpmath=sse",
+ 	"-mbionic",
+-
+ 	// windows
+ 	"--enable-stdcall-fixup",
+ })
+@@ -206,6 +193,8 @@ func init() {
+ 		"-Wno-string-concatenation", // http://b/175068488
+ 	})
+ 
++	staticVariableExportedToBazel("ClangExtraNoOverrideExternalCflags", []string{})
++
+ 	// Extra cflags for external third-party projects to disable warnings that
+ 	// are infeasible to fix in all the external projects and their upstream repos.
+ 	staticVariableExportedToBazel("ClangExtraExternalCflags", []string{
+@@ -229,6 +218,12 @@ func init() {
+ 
+ 		// http://b/165945989
+ 		"-Wno-psabi",
++
++		// http://b/199369603
++		"-Wno-null-pointer-subtraction",
++
++		// http://b/175068488
++		"-Wno-string-concatenation",
+ 	})
+ }
+ 
+diff --git a/cc/config/global.go b/cc/config/global.go
+index ae731b203..14d1596f8 100644
+--- a/cc/config/global.go
++++ b/cc/config/global.go
+@@ -123,7 +123,6 @@ var (
+ 		"-Werror=int-in-bool-context",
+ 		"-Werror=int-to-pointer-cast",
+ 		"-Werror=pointer-to-int-cast",
+-		"-Werror=string-compare",
+ 		"-Werror=xor-used-as-pow",
+ 		// http://b/161386391 for -Wno-void-pointer-to-enum-cast
+ 		"-Wno-void-pointer-to-enum-cast",
+@@ -132,6 +131,48 @@ var (
+ 		// http://b/161386391 for -Wno-pointer-to-int-cast
+ 		"-Wno-pointer-to-int-cast",
+ 		"-Werror=fortify-source",
++		"-Werror=address-of-temporary",
++		// Bug: http://b/29823425 Disable -Wnull-dereference until the
++		// new cases detected by this warning in Clang r271374 are
++		// fixed.
++		//"-Werror=null-dereference",
++		"-Werror=return-type",
++		// http://b/72331526 Disable -Wtautological-* until the instances detected by these
++		// new warnings are fixed.
++		"-Wno-tautological-constant-compare",
++		"-Wno-tautological-type-limit-compare",
++		// http://b/145210666
++		"-Wno-reorder-init-list",
++		// http://b/145211066
++		"-Wno-implicit-int-float-conversion",
++		// New warnings to be fixed after clang-r377782.
++		"-Wno-sizeof-array-div",             // http://b/148815709
++		"-Wno-tautological-overlap-compare", // http://b/148815696
++		// New warnings to be fixed after clang-r383902.
++		"-Wno-deprecated-copy",                      // http://b/153746672
++		"-Wno-range-loop-construct",                 // http://b/153747076
++		"-Wno-misleading-indentation",               // http://b/153746954
++		"-Wno-zero-as-null-pointer-constant",        // http://b/68236239
++		"-Wno-deprecated-anon-enum-enum-conversion", // http://b/153746485
++		"-Wno-pessimizing-move",                     // http://b/154270751
++		// New warnings to be fixed after clang-r399163
++		"-Wno-non-c-typedef-for-linkage", // http://b/161304145
++		// New warnings to be fixed after clang-r428724
++		"-Wno-align-mismatch", // http://b/193679946
++		// New warnings to be fixed after clang-r433403
++		"-Wno-error=unused-but-set-variable",  // http://b/197240255
++		"-Wno-error=unused-but-set-parameter", // http://b/197240255
++		"-Wno-error=unqualified-std-cast-call",
++		"-Wno-error=deprecated-non-prototype",
++		"-Wno-error=bitwise-instead-of-logical",
++	}
++
++	noOverrideExternalGlobalCflags = []string{
++		// http://b/197240255
++		"-Wno-unused-but-set-variable",
++		"-Wno-unused-but-set-parameter",
++		// http://b/215753485
++		"-Wno-bitwise-instead-of-logical",
+ 	}
+ 
+ 	IllegalFlags = []string{
+@@ -145,8 +186,8 @@ var (
+ 
+ 	// prebuilts/clang default settings.
+ 	ClangDefaultBase         = "prebuilts/clang/host"
+-	ClangDefaultVersion      = "clang-r416183b1"
+-	ClangDefaultShortVersion = "12.0.7"
++	ClangDefaultVersion      = "adrian-clang-2"
++	ClangDefaultShortVersion = "15.0.0"
+ 
+ 	// Directories with warnings from Android.bp files.
+ 	WarningAllowedProjects = []string{
+@@ -220,6 +261,7 @@ func init() {
+ 
+ 	staticVariableExportedToBazel("HostClangGlobalCflags", ClangFilterUnknownCflags(hostGlobalCflags))
+ 	staticVariableExportedToBazel("NoOverrideClangGlobalCflags", append(ClangFilterUnknownCflags(noOverrideGlobalCflags), "${ClangExtraNoOverrideCflags}"))
++	staticVariableExportedToBazel("NoOverrideExternalGlobalCflags", append(ClangFilterUnknownCflags(noOverrideExternalGlobalCflags), "${ClangExtraNoOverrideExternalCflags}"))
+ 	staticVariableExportedToBazel("CommonClangGlobalCppflags", append(ClangFilterUnknownCflags(commonGlobalCppflags), "${ClangExtraCppflags}"))
+ 	staticVariableExportedToBazel("ClangExternalCflags", []string{"${ClangExtraExternalCflags}"})
+ 
+diff --git a/cc/config/tidy.go b/cc/config/tidy.go
+index c4563e273..0af60f341 100644
+--- a/cc/config/tidy.go
++++ b/cc/config/tidy.go
+@@ -35,16 +35,26 @@ func init() {
+ 			"bugprone-*",
+ 			"cert-*",
+ 			"clang-diagnostic-unused-command-line-argument",
+-			"google-*",
++			// Select only google-* checks that do not have thousands of warnings.
++			// Add more such checks when we clean up source code.
++			// "google-build-using-namespace",
++			// "google-default-arguments",
++			// "google-explicit-constructor",
++			// "google-global-names-in-headers",
++			// "google-runtime-int",
++			"google-build-explicit-make-pair",
++			"google-build-namespaces",
++			"google-runtime-operator",
++			"google-upgrade-*",
+ 			"misc-*",
+ 			"performance-*",
+ 			"portability-*",
++			"-bugprone-easily-swappable-parameters",
+ 			"-bugprone-narrowing-conversions",
+-			"-google-readability*",
+-			"-google-runtime-references",
+ 			"-misc-no-recursion",
+ 			"-misc-non-private-member-variables-in-classes",
+ 			"-misc-unused-parameters",
++			"-performance-no-int-to-ptr",
+ 			// the following groups are excluded by -*
+ 			// -altera-*
+ 			// -cppcoreguidelines-*
+@@ -62,7 +72,7 @@ func init() {
+ 		// clang-analyzer-* checks are too slow to be in the default for WITH_TIDY=1.
+ 		// nightly builds add CLANG_ANALYZER_CHECKS=1 to run those checks.
+ 		if ctx.Config().IsEnvTrue("CLANG_ANALYZER_CHECKS") {
+-			checks += ",clang-analyzer-*"
++			checks += ",clang-analyzer-*,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
+ 		}
+ 		return checks
+ 	})
+@@ -76,13 +86,10 @@ func init() {
+ 		return strings.Join([]string{
+ 			"-*",
+ 			"clang-diagnostic-unused-command-line-argument",
+-			"google*",
+-			"-google-build-using-namespace",
+-			"-google-default-arguments",
+-			"-google-explicit-constructor",
+-			"-google-readability*",
+-			"-google-runtime-int",
+-			"-google-runtime-references",
++			"google-build-explicit-make-pair",
++			"google-build-namespaces",
++			"google-runtime-operator",
++			"google-upgrade-*",
+ 		}, ",")
+ 	})
+ 
+@@ -114,10 +121,12 @@ var DefaultLocalTidyChecks = []PathBasedTidyCheck{
+ 	{"external/", tidyExternalVendor},
+ 	{"external/google", tidyDefault},
+ 	{"external/webrtc", tidyDefault},
++	{"external/googletest/", tidyExternalVendor},
+ 	{"frameworks/compile/mclinker/", tidyExternalVendor},
+ 	{"hardware/qcom", tidyExternalVendor},
+ 	{"vendor/", tidyExternalVendor},
+ 	{"vendor/google", tidyDefault},
++	{"vendor/google_arc/libs/org.chromium.arc.mojom", tidyExternalVendor},
+ 	{"vendor/google_devices", tidyExternalVendor},
+ }
+ 
+diff --git a/cc/makevars.go b/cc/makevars.go
+index da5f1fde2..3ee84db24 100644
+--- a/cc/makevars.go
++++ b/cc/makevars.go
+@@ -95,6 +95,7 @@ func makeVarsProvider(ctx android.MakeVarsContext) {
+ 	ctx.Strict("CLANG_EXTERNAL_CFLAGS", "${config.ClangExternalCflags}")
+ 	ctx.Strict("GLOBAL_CLANG_CFLAGS_NO_OVERRIDE", "${config.NoOverrideClangGlobalCflags}")
+ 	ctx.Strict("GLOBAL_CLANG_CPPFLAGS_NO_OVERRIDE", "")
++	ctx.Strict("GLOBAL_CLANG_EXTERNAL_CFLAGS_NO_OVERRIDE", "${config.NoOverrideExternalGlobalCflags}")
+ 
+ 	ctx.Strict("BOARD_VNDK_VERSION", ctx.DeviceConfig().VndkVersion())
+ 	ctx.Strict("RECOVERY_SNAPSHOT_VERSION", ctx.DeviceConfig().RecoverySnapshotVersion())
+diff --git a/cc/ndk_library.go b/cc/ndk_library.go
+index 95d84777b..8098271b3 100644
+--- a/cc/ndk_library.go
++++ b/cc/ndk_library.go
+@@ -227,6 +227,12 @@ func compileStubLibrary(ctx ModuleContext, flags Flags, symbolFile, apiLevel, ge
+ 
+ 	subdir := ""
+ 	srcs := []android.Path{stubSrcPath}
++
++	// libc/libm stubs libraries end up mismatching with clang's internal definition of these
++	// functions (which have noreturn attributes and other things). Because we just want to create a
++	// stub with symbol definitions, and types aren't important in C, ignore the mismatch.
++	flags.Local.ConlyFlags = append(flags.Local.ConlyFlags, "-fno-builtin")
++
+ 	return compileObjs(ctx, flagsToBuilderFlags(flags), subdir, srcs, nil, nil), versionScriptPath
+ }
+ 
+diff --git a/cc/tidy.go b/cc/tidy.go
+index 616cf8ab4..0db260508 100644
+--- a/cc/tidy.go
++++ b/cc/tidy.go
+@@ -153,6 +153,15 @@ func (tidy *tidyFeature) flags(ctx ModuleContext, flags Flags) Flags {
+ 	tidyChecks = tidyChecks + ",-bugprone-signed-char-misuse"
+ 	// http://b/155034972
+ 	tidyChecks = tidyChecks + ",-bugprone-branch-clone"
++	// http://b/193716442
++	tidyChecks = tidyChecks + ",-bugprone-implicit-widening-of-multiplication-result"
++	// Too many existing functions trigger this rule, and fixing it requires large code
++	// refactoring. The cost of maintaining this tidy rule outweighs the benefit it brings.
++	tidyChecks = tidyChecks + ",-bugprone-easily-swappable-parameters"
++	// http://b/216364337 - TODO: Follow-up after compiler update to
++	// disable or fix individual instances.
++	tidyChecks = tidyChecks + ",-cert-err33-c"
++	tidyChecks = tidyChecks + ",-performance-inefficient-vector-operation"
+ 	flags.TidyFlags = append(flags.TidyFlags, tidyChecks)
+ 
+ 	if ctx.Config().IsEnvTrue("WITH_TIDY") {
+diff --git a/rust/Android.bp b/rust/Android.bp
+index b611672d4..a47ef1e4c 100644
+--- a/rust/Android.bp
++++ b/rust/Android.bp
+@@ -36,6 +36,7 @@ bootstrap_go_package {
+         "strip.go",
+         "test.go",
+         "testing.go",
++        "toolchain_library.go",
+     ],
+     testSrcs: [
+         "benchmark_test.go",
+diff --git a/rust/compiler.go b/rust/compiler.go
+index 1598ebf9a..322cd3bea 100644
+--- a/rust/compiler.go
++++ b/rust/compiler.go
+@@ -308,9 +308,9 @@ func (compiler *baseCompiler) compilerDeps(ctx DepsContext, deps Deps) Deps {
+ 
+ 	if !Bool(compiler.Properties.No_stdlibs) {
+ 		for _, stdlib := range config.Stdlibs {
+-			// If we're building for the primary arch of the build host, use the compiler's stdlibs
++			// If we're building for the build host, use the prebuilt stdlibs
+ 			if ctx.Target().Os == android.BuildOs {
+-				stdlib = stdlib + "_" + ctx.toolchain().RustTriple()
++				stdlib = "prebuilt_" + stdlib
+ 			}
+ 			deps.Stdlibs = append(deps.Stdlibs, stdlib)
+ 		}
+diff --git a/rust/config/global.go b/rust/config/global.go
+index 1b56237b3..6ca5c9a19 100644
+--- a/rust/config/global.go
++++ b/rust/config/global.go
+@@ -24,7 +24,7 @@ import (
+ var pctx = android.NewPackageContext("android/soong/rust/config")
+ 
+ var (
+-	RustDefaultVersion = "1.51.0"
++	RustDefaultVersion = "1.61.0"
+ 	RustDefaultBase    = "prebuilts/rust/"
+ 	DefaultEdition     = "2018"
+ 	Stdlibs            = []string{
+@@ -48,7 +48,7 @@ var (
+ 		"-C relocation-model=pic",
+ 		"-C overflow-checks=on",
+ 		// Use v0 mangling to distinguish from C++ symbols
+-		"-Z symbol-mangling-version=v0",
++		"-C symbol-mangling-version=v0",
+ 	}
+ 
+ 	deviceGlobalRustFlags = []string{
+diff --git a/rust/image.go b/rust/image.go
+index 1b2df1d3e..ac972ceec 100644
+--- a/rust/image.go
++++ b/rust/image.go
+@@ -34,7 +34,7 @@ func (mod *Module) OdmAvailable() bool {
+ }
+ 
+ func (mod *Module) ProductAvailable() bool {
+-	return false
++	return Bool(mod.VendorProperties.Product_available)
+ }
+ 
+ func (mod *Module) RamdiskAvailable() bool {
+@@ -159,6 +159,11 @@ func (mod *Module) OnlyInVendorRamdisk() bool {
+ 	return false
+ }
+ 
++func (mod *Module) OnlyInProduct() bool {
++	//TODO(b/165791368)
++	return false
++}
++
+ // Returns true when this module is configured to have core and vendor variants.
+ func (mod *Module) HasVendorVariant() bool {
+ 	return Bool(mod.VendorProperties.Vendor_available) || Bool(mod.VendorProperties.Odm_available)
+@@ -174,7 +179,7 @@ func (mod *Module) HasNonSystemVariants() bool {
+ }
+ 
+ func (mod *Module) InProduct() bool {
+-	return false
++	return mod.Properties.ImageVariationPrefix == cc.ProductVariationPrefix
+ }
+ 
+ // Returns true if the module is "vendor" variant. Usually these modules are installed in /vendor
+@@ -197,15 +202,15 @@ func (mod *Module) SetImageVariation(ctx android.BaseModuleContext, variant stri
+ 			m.Properties.HideFromMake = true
+ 			m.HideFromMake()
+ 		}
++	} else if strings.HasPrefix(variant, cc.ProductVariationPrefix) {
++		m.Properties.ImageVariationPrefix = cc.ProductVariationPrefix
++		m.Properties.VndkVersion = strings.TrimPrefix(variant, cc.ProductVariationPrefix)
+ 	}
+ }
+ 
+ func (mod *Module) ImageMutatorBegin(mctx android.BaseModuleContext) {
+ 	// Rust does not support installing to the product image yet.
+-	if Bool(mod.VendorProperties.Product_available) {
+-		mctx.PropertyErrorf("product_available",
+-			"Rust modules do not yet support being available to the product image")
+-	} else if mctx.ProductSpecific() {
++	if mctx.ProductSpecific() {
+ 		mctx.PropertyErrorf("product_specific",
+ 			"Rust modules do not yet support installing to the product image.")
+ 	} else if Bool(mod.VendorProperties.Double_loadable) {
+diff --git a/rust/prebuilt.go b/rust/prebuilt.go
+index 49f3c0f79..e0f0e5fbb 100644
+--- a/rust/prebuilt.go
++++ b/rust/prebuilt.go
+@@ -32,6 +32,8 @@ type PrebuiltProperties struct {
+ }
+ 
+ type prebuiltLibraryDecorator struct {
++	android.Prebuilt
++
+ 	*libraryDecorator
+ 	Properties PrebuiltProperties
+ }
+@@ -54,6 +56,13 @@ func PrebuiltRlibFactory() android.Module {
+ 	return module.Init()
+ }
+ 
++func addSrcSupplier(module android.PrebuiltInterface, prebuilt *prebuiltLibraryDecorator) {
++	srcsSupplier := func(_ android.BaseModuleContext, _ android.Module) []string {
++		return prebuilt.prebuiltSrcs()
++	}
++	android.InitPrebuiltModuleWithSrcSupplier(module, srcsSupplier, "srcs")
++}
++
+ func NewPrebuiltLibrary(hod android.HostOrDeviceSupported) (*Module, *prebuiltLibraryDecorator) {
+ 	module, library := NewRustLibrary(hod)
+ 	library.BuildOnlyRust()
+@@ -62,6 +71,9 @@ func NewPrebuiltLibrary(hod android.HostOrDeviceSupported) (*Module, *prebuiltLi
+ 		libraryDecorator: library,
+ 	}
+ 	module.compiler = prebuilt
++
++	addSrcSupplier(module, prebuilt)
++
+ 	return module, prebuilt
+ }
+ 
+@@ -73,6 +85,9 @@ func NewPrebuiltDylib(hod android.HostOrDeviceSupported) (*Module, *prebuiltLibr
+ 		libraryDecorator: library,
+ 	}
+ 	module.compiler = prebuilt
++
++	addSrcSupplier(module, prebuilt)
++
+ 	return module, prebuilt
+ }
+ 
+@@ -84,6 +99,9 @@ func NewPrebuiltRlib(hod android.HostOrDeviceSupported) (*Module, *prebuiltLibra
+ 		libraryDecorator: library,
+ 	}
+ 	module.compiler = prebuilt
++
++	addSrcSupplier(module, prebuilt)
++
+ 	return module, prebuilt
+ }
+ 
+@@ -129,3 +147,7 @@ func (prebuilt *prebuiltLibraryDecorator) prebuiltSrcs() []string {
+ 
+ 	return srcs
+ }
++
++func (prebuilt *prebuiltLibraryDecorator) prebuilt() *android.Prebuilt {
++	return &prebuilt.Prebuilt
++}
+diff --git a/rust/project_json.go b/rust/project_json.go
+index c28bc7b76..a049f861e 100644
+--- a/rust/project_json.go
++++ b/rust/project_json.go
+@@ -209,6 +209,10 @@ func isModuleSupported(ctx android.SingletonContext, module android.Module) (*Mo
+ 		comp = c.baseCompiler
+ 	case *testDecorator:
+ 		comp = c.binaryDecorator.baseCompiler
++	case *procMacroDecorator:
++		comp = c.baseCompiler
++	case *toolchainLibraryDecorator:
++		comp = c.baseCompiler
+ 	default:
+ 		return nil, nil, false
+ 	}
+diff --git a/rust/rust.go b/rust/rust.go
+index f068b3d7b..276fe5109 100644
+--- a/rust/rust.go
++++ b/rust/rust.go
+@@ -535,7 +535,7 @@ func (mod *Module) CrateName() string {
+ 
+ func (mod *Module) CcLibrary() bool {
+ 	if mod.compiler != nil {
+-		if _, ok := mod.compiler.(*libraryDecorator); ok {
++		if _, ok := mod.compiler.(libraryInterface); ok {
+ 			return true
+ 		}
+ 	}
+@@ -770,7 +770,11 @@ func (mod *Module) GenerateAndroidBuildActions(actx android.ModuleContext) {
+ 
+ 	// Differentiate static libraries that are vendor available
+ 	if mod.UseVndk() {
+-		mod.Properties.SubName += cc.VendorSuffix
++		if mod.InProduct() && !mod.OnlyInProduct() {
++			mod.Properties.SubName += cc.ProductSuffix
++		} else {
++			mod.Properties.SubName += cc.VendorSuffix
++		}
+ 	} else if mod.InVendorRamdisk() && !mod.OnlyInVendorRamdisk() {
+ 		mod.Properties.SubName += cc.VendorRamdiskSuffix
+ 	}
+@@ -917,6 +921,13 @@ func (mod *Module) begin(ctx BaseModuleContext) {
+ 	}
+ }
+ 
++func (mod *Module) Prebuilt() *android.Prebuilt {
++	if p, ok := mod.compiler.(*prebuiltLibraryDecorator); ok {
++		return p.prebuilt()
++	}
++	return nil
++}
++
+ func (mod *Module) depsToPaths(ctx android.ModuleContext) PathDeps {
+ 	var depPaths PathDeps
+ 
+@@ -1342,7 +1353,7 @@ func (mod *Module) DepIsInSameApex(ctx android.BaseModuleContext, dep android.Mo
+ // Overrides ApexModule.IsInstallabeToApex()
+ func (mod *Module) IsInstallableToApex() bool {
+ 	if mod.compiler != nil {
+-		if lib, ok := mod.compiler.(*libraryDecorator); ok && (lib.shared() || lib.dylib()) {
++		if lib, ok := mod.compiler.(libraryInterface); ok && (lib.shared() || lib.dylib()) {
+ 			return true
+ 		}
+ 		if _, ok := mod.compiler.(*binaryDecorator); ok {
+diff --git a/rust/testing.go b/rust/testing.go
+index 1e0c5abbb..c44a78bd5 100644
+--- a/rust/testing.go
++++ b/rust/testing.go
+@@ -48,74 +48,14 @@ var PrepareForIntegrationTestWithRust = android.GroupFixturePreparers(
+ func GatherRequiredDepsForTest() string {
+ 	bp := `
+ 		rust_prebuilt_library {
+-				name: "libstd_x86_64-unknown-linux-gnu",
+-                                crate_name: "std",
+-                                rlib: {
+-                                    srcs: ["libstd.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libstd.so"],
+-                                },
+-				host_supported: true,
+-				sysroot: true,
+-		}
+-		rust_prebuilt_library {
+-				name: "libtest_x86_64-unknown-linux-gnu",
+-                                crate_name: "test",
+-                                rlib: {
+-                                    srcs: ["libtest.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libtest.so"],
+-                                },
+-				host_supported: true,
+-				sysroot: true,
+-		}
+-		rust_prebuilt_library {
+-				name: "libstd_i686-unknown-linux-gnu",
+-                                crate_name: "std",
+-                                rlib: {
+-                                    srcs: ["libstd.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libstd.so"],
+-                                },
+-				host_supported: true,
+-				sysroot: true,
+-		}
+-		rust_prebuilt_library {
+-				name: "libtest_i686-unknown-linux-gnu",
+-                                crate_name: "test",
+-                                rlib: {
+-                                    srcs: ["libtest.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libtest.so"],
+-                                },
+-				host_supported: true,
+-				sysroot: true,
+-		}
+-		rust_prebuilt_library {
+-				name: "libstd_x86_64-apple-darwin",
+-                                crate_name: "std",
+-                                rlib: {
+-                                    srcs: ["libstd.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libstd.so"],
+-                                },
+-				host_supported: true,
+-				sysroot: true,
+-		}
+-		rust_prebuilt_library {
+-				name: "libtest_x86_64-apple-darwin",
+-                                crate_name: "test",
+-                                rlib: {
+-                                    srcs: ["libtest.rlib"],
+-                                },
+-                                dylib: {
+-                                    srcs: ["libtest.so"],
+-                                },
++				name: "libstd",
++				crate_name: "std",
++				rlib: {
++					srcs: ["libstd.rlib"],
++				},
++				dylib: {
++					srcs: ["libstd.so"],
++				},
+ 				host_supported: true,
+ 				sysroot: true,
+ 		}
+diff --git a/rust/toolchain_library.go b/rust/toolchain_library.go
+new file mode 100644
+index 000000000..f9431eb51
+--- /dev/null
++++ b/rust/toolchain_library.go
+@@ -0,0 +1,85 @@
++//
++// Copyright (C) 2021 The Android Open Source Project
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//      http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++//
++package rust
++import (
++	"path"
++	"android/soong/android"
++	"android/soong/rust/config"
++)
++// This module is used to compile the rust toolchain libraries
++// When RUST_PREBUILTS_VERSION is set, the library will generated
++// from the given Rust version.
++func init() {
++	android.RegisterModuleType("rust_toolchain_library",
++		rustToolchainLibraryFactory)
++	android.RegisterModuleType("rust_toolchain_library_rlib",
++		rustToolchainLibraryRlibFactory)
++	android.RegisterModuleType("rust_toolchain_library_dylib",
++		rustToolchainLibraryDylibFactory)
++}
++type toolchainLibraryProperties struct {
++	// path to the toolchain source, relative to the top of the toolchain source
++	Toolchain_src *string `android:"arch_variant"`
++}
++type toolchainLibraryDecorator struct {
++	*libraryDecorator
++	Properties toolchainLibraryProperties
++}
++// rust_toolchain_library produces all rust variants.
++func rustToolchainLibraryFactory() android.Module {
++	module, library := NewRustLibrary(android.HostAndDeviceSupported)
++	library.BuildOnlyRust()
++	return initToolchainLibrary(module, library)
++}
++// rust_toolchain_library_dylib produces a dylib.
++func rustToolchainLibraryDylibFactory() android.Module {
++	module, library := NewRustLibrary(android.HostAndDeviceSupported)
++	library.BuildOnlyDylib()
++	return initToolchainLibrary(module, library)
++}
++// rust_toolchain_library_rlib produces an rlib.
++func rustToolchainLibraryRlibFactory() android.Module {
++	module, library := NewRustLibrary(android.HostAndDeviceSupported)
++	library.BuildOnlyRlib()
++	return initToolchainLibrary(module, library)
++}
++func initToolchainLibrary(module *Module, library *libraryDecorator) android.Module {
++	toolchainLibrary := &toolchainLibraryDecorator{
++		libraryDecorator: library,
++	}
++	module.compiler = toolchainLibrary
++	module.AddProperties(&toolchainLibrary.Properties)
++	android.AddLoadHook(module, rustSetToolchainSource)
++	return module.Init()
++}
++func rustSetToolchainSource(ctx android.LoadHookContext) {
++	if toolchainLib, ok := ctx.Module().(*Module).compiler.(*toolchainLibraryDecorator); ok {
++		prefix := "linux-x86/" + GetRustPrebuiltVersion(ctx)
++		newSrcs := []string{path.Join(prefix, android.String(toolchainLib.Properties.Toolchain_src))}
++		type props struct {
++			Srcs []string
++		}
++		p := &props{}
++		p.Srcs = newSrcs
++		ctx.AppendProperties(p)
++	} else {
++		ctx.ModuleErrorf("Called rustSetToolchainSource on a non-Rust Module.")
++	}
++}
++// GetRustPrebuiltVersion returns the RUST_PREBUILTS_VERSION env var, or the default version if it is not defined.
++func GetRustPrebuiltVersion(ctx android.LoadHookContext) string {
++	return ctx.AConfig().GetenvWithDefault("RUST_PREBUILTS_VERSION", config.RustDefaultVersion)
++}
+-- 
+2.36.1
+

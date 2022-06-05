@@ -1,0 +1,27 @@
+From 098e38c7cd9dc7c0cd85c0828dff1c2d34eac22a Mon Sep 17 00:00:00 2001
+From: Yi Kong <yikong@google.com>
+Date: Fri, 18 Feb 2022 01:54:52 +0800
+Subject: [PATCH] Remove redundant "using" statement
+
+Test: presubmit
+Bug: 219872355
+Change-Id: I58409f39ffe81148ef520a71cfce6ca96f654f84
+---
+ apexd/apexd.cpp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/apexd/apexd.cpp b/apexd/apexd.cpp
+index ba76031b..19f1b899 100644
+--- a/apexd/apexd.cpp
++++ b/apexd/apexd.cpp
+@@ -92,7 +92,6 @@ using android::base::Error;
+ using android::base::GetProperty;
+ using android::base::Join;
+ using android::base::ParseUint;
+-using android::base::ReadFully;
+ using android::base::RemoveFileIfExists;
+ using android::base::Result;
+ using android::base::SetProperty;
+-- 
+2.36.1
+

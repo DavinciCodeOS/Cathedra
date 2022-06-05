@@ -1,0 +1,26 @@
+From cd86dc2b1da4e699d90da887051e29bb94ec296a Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 16:10:55 +0300
+Subject: [PATCH 3/3] binder: Fix new Rust compiler errors
+
+Change-Id: I2170c132169df814d3c772e73e8967b1dd9b19cf
+---
+ libs/binder/rust/src/parcel.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libs/binder/rust/src/parcel.rs b/libs/binder/rust/src/parcel.rs
+index 6c34824a5e..4e08cd6a73 100644
+--- a/libs/binder/rust/src/parcel.rs
++++ b/libs/binder/rust/src/parcel.rs
+@@ -207,7 +207,7 @@ pub struct WritableSubParcel<'a>(RefCell<&'a mut Parcel>);
+ impl<'a> WritableSubParcel<'a> {
+     /// Write a type that implements [`Serialize`] to the sub-parcel.
+     pub fn write<S: Serialize + ?Sized>(&self, parcelable: &S) -> Result<()> {
+-        parcelable.serialize(&mut *self.0.borrow_mut())
++        parcelable.serialize(*self.0.borrow_mut())
+     }
+ }
+ 
+-- 
+2.36.1
+

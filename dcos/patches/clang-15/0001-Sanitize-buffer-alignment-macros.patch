@@ -1,0 +1,246 @@
+From 00679426f536bbe956f3738ea722d427df8f758a Mon Sep 17 00:00:00 2001
+From: Bernie Innocenti <codewiz@google.com>
+Date: Tue, 22 Jun 2021 16:59:52 +0900
+Subject: [PATCH 1/2] Sanitize buffer alignment macros
+
+The ancient ALIGN() macros caused clang-tidy to complain:
+
+packages/modules/DnsResolver/gethnamaddr.cpp:367:10: error: integer to
+pointer cast pessimizes optimization opportunities
+[performance-no-int-to-ptr,-warnings-as-errors]
+    bp = (char*) ALIGN(bp);
+
+The new inline template align_ptr() sidesteps this issue as recommended
+by the clang-tidy documentation:
+  https://clang.llvm.org/extra/clang-tidy/checks/performance-no-int-to-ptr.html
+
+Furthermore, align_ptr() is used to replace this... surprising
+piece of code:
+
+    bp += sizeof(align) - (size_t)((uintptr_t)bp % sizeof(align));
+
+See the bug there? When bp is already aligned to a multiple of
+sizeof(align), it will overalign! Also, 'align' was a union of a
+uint32_t and a char, which is obviously the same alignment of a plain
+uint32_t on any architecture ever created!
+
+Bug: 182416023
+Change-Id: Id39c3030025e4510feeb55723760a2950067cece
+---
+ gethnamaddr.cpp  | 73 +++++++++++-------------------------------------
+ resolv_private.h | 27 ++++++++++++++++++
+ sethostent.cpp   |  5 +---
+ 3 files changed, 44 insertions(+), 61 deletions(-)
+
+diff --git a/gethnamaddr.cpp b/gethnamaddr.cpp
+index 4d01c64..679cb74 100644
+--- a/gethnamaddr.cpp
++++ b/gethnamaddr.cpp
+@@ -82,16 +82,6 @@
+ 
+ using android::net::NetworkDnsEventReported;
+ 
+-// NetBSD uses _DIAGASSERT to null-check arguments and the like,
+-// but it's clear from the number of mistakes in their assertions
+-// that they don't actually test or ship with this.
+-#define _DIAGASSERT(e) /* nothing */
+-
+-// TODO: unify macro ALIGNBYTES and ALIGN for all possible data type alignment of hostent
+-// buffer.
+-#define ALIGNBYTES (sizeof(uintptr_t) - 1)
+-#define ALIGN(p) (((uintptr_t)(p) + ALIGNBYTES) & ~ALIGNBYTES)
+-
+ constexpr int MAXADDRS = 35;
+ 
+ typedef union {
+@@ -99,16 +89,7 @@ typedef union {
+     uint8_t buf[MAXPACKET];
+ } querybuf;
+ 
+-typedef union {
+-    int32_t al;
+-    char ac;
+-} align;
+-
+-static void convert_v4v6_hostent(struct hostent* hp, char** bpp, char* ep,
+-                                 const std::function<void(struct hostent* hp)>& mapping_param,
+-                                 const std::function<void(char* src, char* dst)>& mapping_addr);
+ static void pad_v4v6_hostent(struct hostent* hp, char** bpp, char* ep);
+-
+ static int dns_gethtbyaddr(const unsigned char* uaddr, int len, int af,
+                            const android_net_context* netcontext, getnamaddr* info,
+                            NetworkDnsEventReported* event);
+@@ -125,8 +106,9 @@ static int dns_gethtbyname(ResState* res, const char* name, int af, getnamaddr*
+         if (eom - (ptr) < (count)) goto no_recovery; \
+     } while (0)
+ 
+-static struct hostent* getanswer(const querybuf* answer, int anslen, const char* qname, int qtype,
+-                                 struct hostent* hent, char* buf, size_t buflen, int* he) {
++static struct hostent* getanswer(const querybuf* _Nonnull answer, int anslen,
++                                 const char* _Nonnull qname, int qtype, struct hostent* hent,
++                                 char* buf, size_t buflen, int* he) {
+     const HEADER* hp;
+     const uint8_t* cp;
+     int n;
+@@ -141,9 +123,6 @@ static struct hostent* getanswer(const querybuf* answer, int anslen, const char*
+     const char* tname;
+     std::vector<char*> aliases;
+ 
+-    _DIAGASSERT(answer != NULL);
+-    _DIAGASSERT(qname != NULL);
+-
+     tname = qname;
+     hent->h_name = NULL;
+     eom = answer->buf + anslen;
+@@ -324,7 +303,7 @@ static struct hostent* getanswer(const querybuf* answer, int anslen, const char*
+                     bp += nn;
+                 }
+ 
+-                bp += sizeof(align) - (size_t)((uintptr_t)bp % sizeof(align));
++                bp = align_ptr<sizeof(int32_t)>(bp);
+ 
+                 if (bp + n >= ep) {
+                     LOG(DEBUG) << __func__ << ": size (" << n << ") too big";
+@@ -364,7 +343,7 @@ no_recovery:
+     *he = NO_RECOVERY;
+     return NULL;
+ success:
+-    bp = (char*) ALIGN(bp);
++    bp = align_ptr(bp);
+     aliases.push_back(nullptr);
+     qlen = aliases.size() * sizeof(*hent->h_aliases);
+     if ((size_t)(ep - bp) < qlen) goto nospc;
+@@ -474,15 +453,13 @@ fake:
+     return 0;
+ }
+ 
+-int resolv_gethostbyaddr(const void* addr, socklen_t len, int af, hostent* hp, char* buf,
++int resolv_gethostbyaddr(const void* _Nonnull addr, socklen_t len, int af, hostent* hp, char* buf,
+                          size_t buflen, const struct android_net_context* netcontext,
+                          hostent** result, NetworkDnsEventReported* event) {
+     const uint8_t* uaddr = (const uint8_t*)addr;
+     socklen_t size;
+     struct getnamaddr info;
+ 
+-    _DIAGASSERT(addr != NULL);
+-
+     if (af == AF_INET6 && len == NS_IN6ADDRSZ &&
+         (IN6_IS_ADDR_LINKLOCAL((const struct in6_addr*) addr) ||
+          IN6_IS_ADDR_SITELOCAL((const struct in6_addr*) addr))) {
+@@ -614,42 +591,24 @@ nospc:
+     return NULL;
+ }
+ 
+-static void convert_v4v6_hostent(struct hostent* hp, char** bpp, char* ep,
+-                                 const std::function<void(struct hostent* hp)>& map_param,
+-                                 const std::function<void(char* src, char* dst)>& map_addr) {
+-    _DIAGASSERT(hp != NULL);
+-    _DIAGASSERT(bpp != NULL);
+-    _DIAGASSERT(ep != NULL);
+-
++/* Reserve space for mapping IPv4 address to IPv6 address in place */
++static void pad_v4v6_hostent(struct hostent* _Nonnull hp, char** _Nonnull bpp, char* _Nonnull ep) {
+     if (hp->h_addrtype != AF_INET || hp->h_length != NS_INADDRSZ) return;
+-    map_param(hp);
+     for (char** ap = hp->h_addr_list; *ap; ap++) {
+-        int i = (int)(sizeof(align) - (size_t)((uintptr_t)*bpp % sizeof(align)));
++        char* const bp = align_ptr<sizeof(int32_t)>(*bpp);
+ 
+-        if (ep - *bpp < (i + NS_IN6ADDRSZ)) {
+-            /* Out of memory.  Truncate address list here.  XXX */
+-            *ap = NULL;
++        if (ep - bp < NS_IN6ADDRSZ) {
++            // Out of space.  Truncate address list here.
++            *ap = nullptr;
+             return;
+         }
+-        *bpp += i;
+-        map_addr(*ap, *bpp);
+-        *ap = *bpp;
+-        *bpp += NS_IN6ADDRSZ;
++        memcpy(bp, *ap, NS_INADDRSZ);
++        memcpy(bp + NS_INADDRSZ, NAT64_PAD, sizeof(NAT64_PAD));
++        *ap = bp;
++        *bpp = bp + NS_IN6ADDRSZ;
+     }
+ }
+ 
+-/* Reserve space for mapping IPv4 address to IPv6 address in place */
+-static void pad_v4v6_hostent(struct hostent* hp, char** bpp, char* ep) {
+-    convert_v4v6_hostent(hp, bpp, ep,
+-                         [](struct hostent* hp) {
+-                             (void) hp; /* unused */
+-                         },
+-                         [](char* src, char* dst) {
+-                             memcpy(dst, src, NS_INADDRSZ);
+-                             memcpy(dst + NS_INADDRSZ, NAT64_PAD, sizeof(NAT64_PAD));
+-                         });
+-}
+-
+ static int dns_gethtbyname(ResState* res, const char* name, int addr_type, getnamaddr* info) {
+     int n, type;
+     info->hp->h_addrtype = addr_type;
+diff --git a/resolv_private.h b/resolv_private.h
+index bc7e415..d373caa 100644
+--- a/resolv_private.h
++++ b/resolv_private.h
+@@ -194,6 +194,33 @@ Dest saturate_cast(int64_t x) {
+     return static_cast<Dest>(x);
+ }
+ 
++constexpr bool is_power_of_2(size_t n) {
++    return n != 0 && (n & (n - 1)) == 0;
++}
++
++// Rounds up a pointer to a char buffer |p| to a multiple of |Alignment| bytes.
++// Requirements:
++//   |p| must be a pointer to a byte-sized type (e.g.: uint8_t)
++//   |Alignment| must be a power of 2
++template<uintptr_t Alignment = sizeof(void*), typename T>
++        requires (sizeof(T) == 1) && (is_power_of_2(Alignment))
++constexpr T* align_ptr(T* const p) {
++    // Written this way to sidestep the performance-no-int-to-ptr clang-tidy warning.
++    constexpr uintptr_t mask = Alignment - 1;
++    const uintptr_t uintptr = reinterpret_cast<uintptr_t>(p);
++    const uintptr_t aligned = (uintptr + mask) & ~mask;
++    const uintptr_t bias = aligned - uintptr;
++    return p + bias;
++}
++
++// Testcases for align_ptr()
++// TODO: enable when libc++ has std::bit_cast - reinterpret_cast isn't allowed in consteval context
++// static_assert(align_ptr((char*)1000) == (char*)1000);
++// static_assert(align_ptr((char*)1001) == (char*)1000 + sizeof(void*));
++// static_assert(align_ptr((char*)1003) == (char*)1000 + sizeof(void*));
++// static_assert(align_ptr<sizeof(uint32_t)>((char*)1004) == (char*)1004);
++// static_assert(align_ptr<sizeof(uint64_t)>((char*)1004) == (char*)1008);
++
+ android::net::NsType getQueryType(const uint8_t* msg, size_t msgLen);
+ 
+ android::net::IpVersion ipFamilyToIPVersion(int ipFamily);
+diff --git a/sethostent.cpp b/sethostent.cpp
+index de94fce..7f9384c 100644
+--- a/sethostent.cpp
++++ b/sethostent.cpp
+@@ -46,9 +46,6 @@
+ constexpr int MAXALIASES = 35;
+ constexpr int MAXADDRS = 35;
+ 
+-#define ALIGNBYTES (sizeof(uintptr_t) - 1)
+-#define ALIGN(p) (((uintptr_t)(p) + ALIGNBYTES) & ~ALIGNBYTES)
+-
+ static void sethostent_r(FILE** hf) {
+     if (!*hf)
+         *hf = fopen(_PATH_HOSTS, "re");
+@@ -121,7 +118,7 @@ int _hf_gethtbyname2(const char* name, int af, getnamaddr* info) {
+                 if (anum >= MAXALIASES) goto nospc;
+                 HENT_SCOPY(aliases[anum], hp->h_aliases[anum], ptr, len);
+             }
+-            ptr = (char*) ALIGN(ptr);
++            ptr = align_ptr(ptr);
+             if ((size_t)(ptr - buf) >= info->buflen) goto nospc;
+         }
+ 
+-- 
+2.36.1
+

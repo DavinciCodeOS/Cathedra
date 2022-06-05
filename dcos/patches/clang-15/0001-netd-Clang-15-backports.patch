@@ -1,0 +1,566 @@
+From 8099e2929fc51df7cf6271cbd04268c4a0be053a Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Sun, 5 Jun 2022 16:00:21 +0300
+Subject: [PATCH] netd: Clang 15 backports
+
+Change-Id: Ic20bf151b1f87ca0a34c99224083cd98519a7da1
+---
+ Android.bp                               |  20 ++--
+ server/FirewallController.cpp            | 118 +----------------------
+ server/FirewallController.h              |  24 -----
+ server/FwmarkServer.cpp                  |   1 -
+ server/InterfaceController.cpp           |   2 -
+ server/IptablesBaseTest.cpp              |   2 +-
+ server/IptablesRestoreController.cpp     |   2 +-
+ server/IptablesRestoreControllerTest.cpp |   5 +-
+ server/NetdConstants.h                   |  15 +++
+ server/NetdNativeService.cpp             |   9 +-
+ server/RouteController.cpp               |   1 -
+ server/TrafficController.cpp             |  31 ++++--
+ server/TrafficController.h               |   7 +-
+ server/TrafficControllerTest.cpp         |   1 -
+ server/XfrmController.cpp                |   1 -
+ 15 files changed, 65 insertions(+), 174 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 0838a8dd..d3732777 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -74,16 +74,14 @@ cc_defaults {
+         "-misc-non-private-member-variables-in-classes",  // Also complains about structs
+         "-performance-noexcept-move-constructor",
+         "-performance-unnecessary-value-param",
+-        "-performance-no-int-to-ptr",
+-    ],
+-    tidy_flags: [
+-        "-warnings-as-errors="
+-        + "android-*,"
+-        + "bugprone-*,"
+-        + "cert-*,"
+-        + "clang-analyzer-security*,"
+-        + "google-*,"
+-        + "misc-*,"
+-        + "performance-*"
+     ],
++    tidy_checks_as_errors: [
++        "android-*",
++        "bugprone-*",
++        "cert-*",
++        "clang-analyzer-security*",
++        "google-*",
++        "misc-*",
++        "performance-*",
++     ],
+ }
+diff --git a/server/FirewallController.cpp b/server/FirewallController.cpp
+index 35fd1e20..57bb2683 100644
+--- a/server/FirewallController.cpp
++++ b/server/FirewallController.cpp
+@@ -41,7 +41,6 @@ using android::base::ReadFileToString;
+ using android::base::Split;
+ using android::base::StringAppendF;
+ using android::base::StringPrintf;
+-using android::net::gCtls;
+ 
+ namespace {
+ 
+@@ -66,11 +65,6 @@ const char* FirewallController::LOCAL_INPUT = "fw_INPUT";
+ const char* FirewallController::LOCAL_OUTPUT = "fw_OUTPUT";
+ const char* FirewallController::LOCAL_FORWARD = "fw_FORWARD";
+ 
+-const char* FirewallController::LOCAL_DOZABLE = "fw_dozable";
+-const char* FirewallController::LOCAL_STANDBY = "fw_standby";
+-const char* FirewallController::LOCAL_POWERSAVE = "fw_powersave";
+-const char* FirewallController::LOCAL_RESTRICTED = "fw_restricted";
+-
+ // ICMPv6 types that are required for any form of IPv6 connectivity to work. Note that because the
+ // fw_dozable chain is called from both INPUT and OUTPUT, this includes both packets that we need
+ // to be able to send (e.g., RS, NS), and packets that we need to receive (e.g., RA, NA).
+@@ -90,18 +84,7 @@ FirewallController::FirewallController(void) : mMaxUid(discoverMaximumValidUid(k
+ }
+ 
+ int FirewallController::setupIptablesHooks(void) {
+-    int res = flushRules();
+-
+-    // mUseBpfOwnerMatch should be removed, but it is still depended upon by test code.
+-    mUseBpfOwnerMatch = true;
+-    if (mUseBpfOwnerMatch) {
+-        return res;
+-    }
+-    res |= createChain(LOCAL_DOZABLE, getFirewallType(DOZABLE));
+-    res |= createChain(LOCAL_STANDBY, getFirewallType(STANDBY));
+-    res |= createChain(LOCAL_POWERSAVE, getFirewallType(POWERSAVE));
+-    res |= createChain(LOCAL_RESTRICTED, getFirewallType(RESTRICTED));
+-    return res;
++    return flushRules();
+ }
+ 
+ int FirewallController::setFirewallType(FirewallType ftype) {
+@@ -145,39 +128,6 @@ int FirewallController::resetFirewall(void) {
+     return flushRules();
+ }
+ 
+-int FirewallController::enableChildChains(ChildChain chain, bool enable) {
+-    int res = 0;
+-    const char* name;
+-    switch(chain) {
+-        case DOZABLE:
+-            name = LOCAL_DOZABLE;
+-            break;
+-        case STANDBY:
+-            name = LOCAL_STANDBY;
+-            break;
+-        case POWERSAVE:
+-            name = LOCAL_POWERSAVE;
+-            break;
+-        case RESTRICTED:
+-            name = LOCAL_RESTRICTED;
+-            break;
+-        default:
+-            return res;
+-    }
+-
+-    if (mUseBpfOwnerMatch) {
+-        return gCtls->trafficCtrl.toggleUidOwnerMap(chain, enable);
+-    }
+-
+-    std::string command = "*filter\n";
+-    for (const char *parent : { LOCAL_INPUT, LOCAL_OUTPUT }) {
+-        StringAppendF(&command, "%s %s -j %s\n", (enable ? "-A" : "-D"), parent, name);
+-    }
+-    StringAppendF(&command, "COMMIT\n");
+-
+-    return execIptablesRestore(V4V6, command);
+-}
+-
+ int FirewallController::isFirewallEnabled(void) {
+     // TODO: verify that rules are still in place near top
+     return -1;
+@@ -217,72 +167,6 @@ int FirewallController::setInterfaceRule(const char* iface, FirewallRule rule) {
+     return (execIptablesRestore(V4V6, command) == 0) ? 0 : -EREMOTEIO;
+ }
+ 
+-FirewallType FirewallController::getFirewallType(ChildChain chain) {
+-    switch(chain) {
+-        case DOZABLE:
+-            return ALLOWLIST;
+-        case STANDBY:
+-            return DENYLIST;
+-        case POWERSAVE:
+-            return ALLOWLIST;
+-        case RESTRICTED:
+-            return ALLOWLIST;
+-        case NONE:
+-            return mFirewallType;
+-        default:
+-            return DENYLIST;
+-    }
+-}
+-
+-int FirewallController::setUidRule(ChildChain chain, int uid, FirewallRule rule) {
+-    const char* op;
+-    const char* target;
+-    FirewallType firewallType = getFirewallType(chain);
+-    if (firewallType == ALLOWLIST) {
+-        target = "RETURN";
+-        // When adding, insert RETURN rules at the front, before the catch-all DROP at the end.
+-        op = (rule == ALLOW)? "-I" : "-D";
+-    } else {  // DENYLIST mode
+-        target = "DROP";
+-        // When adding, append DROP rules at the end, after the RETURN rule that matches TCP RSTs.
+-        op = (rule == DENY)? "-A" : "-D";
+-    }
+-
+-    std::vector<std::string> chainNames;
+-    switch(chain) {
+-        case DOZABLE:
+-            chainNames = {LOCAL_DOZABLE};
+-            break;
+-        case STANDBY:
+-            chainNames = {LOCAL_STANDBY};
+-            break;
+-        case POWERSAVE:
+-            chainNames = {LOCAL_POWERSAVE};
+-            break;
+-        case RESTRICTED:
+-            chainNames = {LOCAL_RESTRICTED};
+-            break;
+-        case NONE:
+-            chainNames = {LOCAL_INPUT, LOCAL_OUTPUT};
+-            break;
+-        default:
+-            ALOGW("Unknown child chain: %d", chain);
+-            return -EINVAL;
+-    }
+-    if (mUseBpfOwnerMatch) {
+-        return gCtls->trafficCtrl.changeUidOwnerRule(chain, uid, rule, firewallType);
+-    }
+-
+-    std::string command = "*filter\n";
+-    for (const std::string& chainName : chainNames) {
+-        StringAppendF(&command, "%s %s -m owner --uid-owner %d -j %s\n",
+-                      op, chainName.c_str(), uid, target);
+-    }
+-    StringAppendF(&command, "COMMIT\n");
+-
+-    return (execIptablesRestore(V4V6, command) == 0) ? 0 : -EREMOTEIO;
+-}
+-
+ int FirewallController::createChain(const char* chain, FirewallType type) {
+     static const std::vector<int32_t> NO_UIDS;
+     return replaceUidChain(chain, type == ALLOWLIST, NO_UIDS);
+diff --git a/server/FirewallController.h b/server/FirewallController.h
+index 6de1b45a..2b90dd9f 100644
+--- a/server/FirewallController.h
++++ b/server/FirewallController.h
+@@ -23,30 +23,12 @@
+ #include <string>
+ #include <vector>
+ 
+-#include "android/net/INetd.h"
+-
+ #include "NetdConstants.h"
+ #include "bpf/BpfUtils.h"
+ 
+ namespace android {
+ namespace net {
+ 
+-enum FirewallRule { ALLOW = INetd::FIREWALL_RULE_ALLOW, DENY = INetd::FIREWALL_RULE_DENY };
+-
+-// ALLOWLIST means the firewall denies all by default, uids must be explicitly ALLOWed
+-// DENYLIST means the firewall allows all by default, uids must be explicitly DENYed
+-
+-enum FirewallType { ALLOWLIST = INetd::FIREWALL_ALLOWLIST, DENYLIST = INetd::FIREWALL_DENYLIST };
+-
+-enum ChildChain {
+-    NONE = INetd::FIREWALL_CHAIN_NONE,
+-    DOZABLE = INetd::FIREWALL_CHAIN_DOZABLE,
+-    STANDBY = INetd::FIREWALL_CHAIN_STANDBY,
+-    POWERSAVE = INetd::FIREWALL_CHAIN_POWERSAVE,
+-    RESTRICTED = INetd::FIREWALL_CHAIN_RESTRICTED,
+-    INVALID_CHAIN
+-};
+-
+ /*
+  * Simple firewall that drops all packets except those matching explicitly
+  * defined ALLOW rules.
+@@ -83,11 +65,6 @@ public:
+   static const char* LOCAL_OUTPUT;
+   static const char* LOCAL_FORWARD;
+ 
+-  static const char* LOCAL_DOZABLE;
+-  static const char* LOCAL_STANDBY;
+-  static const char* LOCAL_POWERSAVE;
+-  static const char* LOCAL_RESTRICTED;
+-
+   static const char* ICMPV6_TYPES[];
+ 
+   std::mutex lock;
+@@ -112,7 +89,6 @@ private:
+   int attachChain(const char*, const char*);
+   int detachChain(const char*, const char*);
+   int createChain(const char*, FirewallType);
+-  FirewallType getFirewallType(ChildChain);
+ };
+ 
+ }  // namespace net
+diff --git a/server/FwmarkServer.cpp b/server/FwmarkServer.cpp
+index 60981e52..6eca07bb 100644
+--- a/server/FwmarkServer.cpp
++++ b/server/FwmarkServer.cpp
+@@ -34,7 +34,6 @@
+ #include "NetworkController.h"
+ #include "TrafficController.h"
+ 
+-using android::String16;
+ using android::base::ReceiveFileDescriptorVector;
+ using android::base::unique_fd;
+ using android::net::metrics::INetdEventListener;
+diff --git a/server/InterfaceController.cpp b/server/InterfaceController.cpp
+index 7504fb91..c8d26830 100644
+--- a/server/InterfaceController.cpp
++++ b/server/InterfaceController.cpp
+@@ -44,8 +44,6 @@ using android::base::ReadFileToString;
+ using android::base::StringPrintf;
+ using android::base::Trim;
+ using android::base::WriteStringToFile;
+-using android::net::INetd;
+-using android::net::RouteController;
+ using android::netdutils::isOk;
+ using android::netdutils::makeSlice;
+ using android::netdutils::sSyscalls;
+diff --git a/server/IptablesBaseTest.cpp b/server/IptablesBaseTest.cpp
+index b3748cd5..ef4d7434 100644
+--- a/server/IptablesBaseTest.cpp
++++ b/server/IptablesBaseTest.cpp
+@@ -24,10 +24,10 @@
+ 
+ #include <android-base/stringprintf.h>
+ 
++#define LOG_TAG "IptablesBaseTest"
+ #include "IptablesBaseTest.h"
+ #include "NetdConstants.h"
+ 
+-#define LOG_TAG "IptablesBaseTest"
+ #include <log/log.h>
+ 
+ using android::base::StringPrintf;
+diff --git a/server/IptablesRestoreController.cpp b/server/IptablesRestoreController.cpp
+index 10cedfa3..b37c7c6f 100644
+--- a/server/IptablesRestoreController.cpp
++++ b/server/IptablesRestoreController.cpp
+@@ -14,6 +14,7 @@
+  * limitations under the License.
+  */
+ 
++#define LOG_TAG "IptablesRestoreController"
+ #include "IptablesRestoreController.h"
+ 
+ #include <poll.h>
+@@ -21,7 +22,6 @@
+ #include <sys/wait.h>
+ #include <unistd.h>
+ 
+-#define LOG_TAG "IptablesRestoreController"
+ #include <android-base/logging.h>
+ #include <android-base/file.h>
+ #include <netdutils/Syscalls.h>
+diff --git a/server/IptablesRestoreControllerTest.cpp b/server/IptablesRestoreControllerTest.cpp
+index 3881124a..a05c76d1 100644
+--- a/server/IptablesRestoreControllerTest.cpp
++++ b/server/IptablesRestoreControllerTest.cpp
+@@ -14,6 +14,9 @@
+  * limitations under the License.
+  */
+ 
++#define LOG_TAG "IptablesRestoreControllerTest"
++#include "IptablesRestoreController.h"
++
+ #include <fcntl.h>
+ #include <gmock/gmock.h>
+ #include <gtest/gtest.h>
+@@ -25,14 +28,12 @@
+ #include <iostream>
+ #include <string>
+ 
+-#define LOG_TAG "IptablesRestoreControllerTest"
+ #include <android-base/stringprintf.h>
+ #include <android-base/strings.h>
+ #include <log/log.h>
+ #include <netdutils/MockSyscalls.h>
+ #include <netdutils/Stopwatch.h>
+ 
+-#include "IptablesRestoreController.h"
+ #include "NetdConstants.h"
+ #include "bpf/BpfUtils.h"
+ 
+diff --git a/server/NetdConstants.h b/server/NetdConstants.h
+index c273e1bd..1c948b51 100644
+--- a/server/NetdConstants.h
++++ b/server/NetdConstants.h
+@@ -24,6 +24,8 @@
+ #include <mutex>
+ #include <string>
+ 
++#include "android/net/INetd.h"
++
+ #include <netdutils/UidConstants.h>
+ #include <private/android_filesystem_config.h>
+ 
+@@ -74,4 +76,17 @@ namespace android::net {
+  */
+ extern std::mutex gBigNetdLock;
+ 
++enum FirewallRule { ALLOW = INetd::FIREWALL_RULE_ALLOW, DENY = INetd::FIREWALL_RULE_DENY };
++// ALLOWLIST means the firewall denies all by default, uids must be explicitly ALLOWed
++// DENYLIST means the firewall allows all by default, uids must be explicitly DENYed
++enum FirewallType { ALLOWLIST = INetd::FIREWALL_ALLOWLIST, DENYLIST = INetd::FIREWALL_DENYLIST };
++enum ChildChain {
++    NONE = INetd::FIREWALL_CHAIN_NONE,
++    DOZABLE = INetd::FIREWALL_CHAIN_DOZABLE,
++    STANDBY = INetd::FIREWALL_CHAIN_STANDBY,
++    POWERSAVE = INetd::FIREWALL_CHAIN_POWERSAVE,
++    RESTRICTED = INetd::FIREWALL_CHAIN_RESTRICTED,
++    INVALID_CHAIN
++};
++
+ }  // namespace android::net
+diff --git a/server/NetdNativeService.cpp b/server/NetdNativeService.cpp
+index 61ab8599..73d53bb1 100644
+--- a/server/NetdNativeService.cpp
++++ b/server/NetdNativeService.cpp
+@@ -52,8 +52,6 @@
+ 
+ using android::base::StringPrintf;
+ using android::base::WriteStringToFile;
+-using android::net::NativeNetworkType;
+-using android::net::TetherOffloadRuleParcel;
+ using android::net::TetherStatsParcel;
+ using android::net::UidRangeParcel;
+ using android::net::netd::aidl::NativeUidRangeConfig;
+@@ -275,7 +273,7 @@ binder::Status NetdNativeService::firewallReplaceUidChain(const std::string& cha
+                                                           const std::vector<int32_t>& uids,
+                                                           bool* ret) {
+     NETD_LOCKING_RPC(gCtls->firewallCtrl.lock, PERM_NETWORK_STACK, PERM_MAINLINE_NETWORK_STACK);
+-    int err = gCtls->firewallCtrl.replaceUidChain(chainName, isAllowlist, uids);
++    int err = gCtls->trafficCtrl.replaceUidOwnerMap(chainName, isAllowlist, uids);
+     *ret = (err == 0);
+     return binder::Status::ok();
+ }
+@@ -1212,8 +1210,9 @@ binder::Status NetdNativeService::firewallSetUidRule(int32_t childChain, int32_t
+     NETD_LOCKING_RPC(gCtls->firewallCtrl.lock, PERM_NETWORK_STACK, PERM_MAINLINE_NETWORK_STACK);
+     auto chain = static_cast<ChildChain>(childChain);
+     auto rule = static_cast<FirewallRule>(firewallRule);
++    FirewallType fType = gCtls->trafficCtrl.getFirewallType(chain);
+ 
+-    int res = gCtls->firewallCtrl.setUidRule(chain, uid, rule);
++    int res = gCtls->trafficCtrl.changeUidOwnerRule(chain, uid, rule, fType);
+     return statusFromErrcode(res);
+ }
+ 
+@@ -1221,7 +1220,7 @@ binder::Status NetdNativeService::firewallEnableChildChain(int32_t childChain, b
+     NETD_LOCKING_RPC(gCtls->firewallCtrl.lock, PERM_NETWORK_STACK, PERM_MAINLINE_NETWORK_STACK);
+     auto chain = static_cast<ChildChain>(childChain);
+ 
+-    int res = gCtls->firewallCtrl.enableChildChains(chain, enable);
++    int res = gCtls->trafficCtrl.toggleUidOwnerMap(chain, enable);
+     return statusFromErrcode(res);
+ }
+ 
+diff --git a/server/RouteController.cpp b/server/RouteController.cpp
+index ba305e69..c3cee6cb 100644
+--- a/server/RouteController.cpp
++++ b/server/RouteController.cpp
+@@ -43,7 +43,6 @@
+ using android::base::StartsWith;
+ using android::base::StringPrintf;
+ using android::base::WriteStringToFile;
+-using android::net::UidRangeParcel;
+ 
+ namespace android::net {
+ 
+diff --git a/server/TrafficController.cpp b/server/TrafficController.cpp
+index 4c5eea11..c5d902c2 100644
+--- a/server/TrafficController.cpp
++++ b/server/TrafficController.cpp
+@@ -46,7 +46,6 @@
+ #include "TrafficController.h"
+ #include "bpf/BpfMap.h"
+ 
+-#include "FirewallController.h"
+ #include "InterfaceController.h"
+ #include "NetlinkListener.h"
+ #include "netdutils/DumpWriter.h"
+@@ -70,7 +69,6 @@ using netdutils::sSyscalls;
+ using netdutils::Status;
+ using netdutils::statusFromErrno;
+ using netdutils::StatusOr;
+-using netdutils::status::ok;
+ 
+ constexpr int kSockDiagMsgType = SOCK_DIAG_BY_FAMILY;
+ constexpr int kSockDiagDoneMsgType = NLMSG_DONE;
+@@ -81,6 +79,11 @@ constexpr int PER_UID_STATS_ENTRIES_LIMIT = 500;
+ // map with tagged traffic entries.
+ constexpr int TOTAL_UID_STATS_ENTRIES_LIMIT = STATS_MAP_SIZE * 0.9;
+ 
++const char* TrafficController::LOCAL_DOZABLE = "fw_dozable";
++const char* TrafficController::LOCAL_STANDBY = "fw_standby";
++const char* TrafficController::LOCAL_POWERSAVE = "fw_powersave";
++const char* TrafficController::LOCAL_RESTRICTED = "fw_restricted";
++
+ static_assert(BPF_PERMISSION_INTERNET == INetd::PERMISSION_INTERNET,
+               "Mismatch between BPF and AIDL permissions: PERMISSION_INTERNET");
+ static_assert(BPF_PERMISSION_UPDATE_DEVICE_STATS == INetd::PERMISSION_UPDATE_DEVICE_STATS,
+@@ -567,6 +570,22 @@ Status TrafficController::updateUidOwnerMap(const std::vector<uint32_t>& appUids
+     return netdutils::status::ok;
+ }
+ 
++FirewallType TrafficController::getFirewallType(ChildChain chain) {
++    switch (chain) {
++        case DOZABLE:
++            return ALLOWLIST;
++        case STANDBY:
++            return DENYLIST;
++        case POWERSAVE:
++            return ALLOWLIST;
++        case RESTRICTED:
++            return ALLOWLIST;
++        case NONE:
++        default:
++            return DENYLIST;
++    }
++}
++
+ int TrafficController::changeUidOwnerRule(ChildChain chain, uid_t uid, FirewallRule rule,
+                                           FirewallType type) {
+     Status res;
+@@ -652,13 +671,13 @@ int TrafficController::replaceUidOwnerMap(const std::string& name, bool isAllowl
+     // FirewallRule rule = isAllowlist ? ALLOW : DENY;
+     // FirewallType type = isAllowlist ? ALLOWLIST : DENYLIST;
+     Status res;
+-    if (!name.compare(FirewallController::LOCAL_DOZABLE)) {
++    if (!name.compare(LOCAL_DOZABLE)) {
+         res = replaceRulesInMap(DOZABLE_MATCH, uids);
+-    } else if (!name.compare(FirewallController::LOCAL_STANDBY)) {
++    } else if (!name.compare(LOCAL_STANDBY)) {
+         res = replaceRulesInMap(STANDBY_MATCH, uids);
+-    } else if (!name.compare(FirewallController::LOCAL_POWERSAVE)) {
++    } else if (!name.compare(LOCAL_POWERSAVE)) {
+         res = replaceRulesInMap(POWERSAVE_MATCH, uids);
+-    } else if (!name.compare(FirewallController::LOCAL_RESTRICTED)) {
++    } else if (!name.compare(LOCAL_RESTRICTED)) {
+         res = replaceRulesInMap(RESTRICTED_MATCH, uids);
+     } else {
+         ALOGE("unknown chain name: %s", name.c_str());
+diff --git a/server/TrafficController.h b/server/TrafficController.h
+index 780986e8..3a3ba964 100644
+--- a/server/TrafficController.h
++++ b/server/TrafficController.h
+@@ -20,7 +20,6 @@
+ #include <linux/bpf.h>
+ 
+ #include "BandwidthController.h"
+-#include "FirewallController.h"
+ #include "NetlinkListener.h"
+ #include "Network.h"
+ #include "android-base/thread_annotations.h"
+@@ -119,6 +118,12 @@ class TrafficController {
+ 
+     void setPermissionForUids(int permission, const std::vector<uid_t>& uids) EXCLUDES(mMutex);
+ 
++    FirewallType getFirewallType(ChildChain);
++    static const char* LOCAL_DOZABLE;
++    static const char* LOCAL_STANDBY;
++    static const char* LOCAL_POWERSAVE;
++    static const char* LOCAL_RESTRICTED;
++
+   private:
+     /*
+      * mCookieTagMap: Store the corresponding tag and uid for a specific socket.
+diff --git a/server/TrafficControllerTest.cpp b/server/TrafficControllerTest.cpp
+index 159fb086..497bc1d6 100644
+--- a/server/TrafficControllerTest.cpp
++++ b/server/TrafficControllerTest.cpp
+@@ -35,7 +35,6 @@
+ 
+ #include <netdutils/MockSyscalls.h>
+ 
+-#include "FirewallController.h"
+ #include "TrafficController.h"
+ #include "bpf/BpfUtils.h"
+ 
+diff --git a/server/XfrmController.cpp b/server/XfrmController.cpp
+index 24168a20..de8a1b4a 100644
+--- a/server/XfrmController.cpp
++++ b/server/XfrmController.cpp
+@@ -67,7 +67,6 @@
+ #include "netdutils/Slice.h"
+ #include "netdutils/Syscalls.h"
+ 
+-using android::net::INetd;
+ using android::netdutils::DumpWriter;
+ using android::netdutils::Fd;
+ using android::netdutils::ScopedIndent;
+-- 
+2.36.1
+

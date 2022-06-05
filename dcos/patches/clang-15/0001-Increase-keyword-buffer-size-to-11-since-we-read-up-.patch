@@ -1,0 +1,34 @@
+From 35057b341bb004a0fa56036bb00816def067fe4f Mon Sep 17 00:00:00 2001
+From: Stephen Hines <srhines@google.com>
+Date: Thu, 13 Jan 2022 01:38:44 -0800
+Subject: [PATCH] Increase keyword buffer size to 11 since we read up to 10
+ bytes.
+
+external/mdnsresponder/mDNSPosix/mDNSPosix.c:516:32: error: 'sscanf' may overflow; destination buffer in argument 3 has size 10, but the corresponding specifier may require size 11 [-Werror,-Wfortify-source]
+                if (sscanf(line,"%10s %15s", keyword, nameserver) != 2) continue;       // it will skip whitespaces
+
+This was found as part of testing
+https://android-review.googlesource.com/c/toolchain/llvm_android/+/1940575.
+
+Test: builds with latest fortify-source checks
+Change-Id: Id6910c32875b82e44020f6138e8e89b6a8bff4a4
+---
+ mDNSPosix/mDNSPosix.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mDNSPosix/mDNSPosix.c b/mDNSPosix/mDNSPosix.c
+index 5e47657..64658b3 100644
+--- a/mDNSPosix/mDNSPosix.c
++++ b/mDNSPosix/mDNSPosix.c
+@@ -505,7 +505,7 @@ mDNSexport int ParseDNSServers(mDNS *m, const char *filePath)
+ 	{
+ 	char line[256];
+ 	char nameserver[16];
+-	char keyword[10];
++	char keyword[11];
+ 	int  numOfServers = 0;
+ 	FILE *fp = fopen(filePath, "r");
+ 	if (fp == NULL) return -1;
+-- 
+2.36.1
+

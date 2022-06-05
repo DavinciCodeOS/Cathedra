@@ -11,6 +11,9 @@
    <remove-project name="platform/system/memory/lmkd" />
    <remove-project name="platform/external/erofs-utils" />
 
+   <!-- Rust is outdated, add much more recent one -->
+   <remove-project name="platform/prebuilts/rust" />
+
    <!-- Add new repositories -->
    <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="dcos-github" revision="12" />
    <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/kernel_xiaomi_sm6150" remote="dcos-github" revision="12.1" />
@@ -23,4 +26,7 @@
    <project path="system/memory/lmkd" name="YAAP/system_memory_lmkd" remote="dcos-github" revision="twelve" />
 
    <project path="packages/overlays/ThemedIcons" name="davincicodeos/packages_overlays_ThemedIcons" remote="dcos-gitlab" revision="12.1" />
+
+   <!-- More recent Rust -->
+   <project path="prebuilts/rust" name="platform/prebuilts/rust" remote="aosp" clone-depth="1" revision="refs/tags/rustc-1.61.0" />
 </manifest>
