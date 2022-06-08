@@ -1,4 +1,4 @@
-From a73cee4a7508efecafdc05af927db507d4f6df92 Mon Sep 17 00:00:00 2001
+From eb617fc95ebf35d41ef84a05c50961e36b9d93ce Mon Sep 17 00:00:00 2001
 From: Chris Wailes <chriswailes@google.com>
 Date: Tue, 27 Jul 2021 16:04:33 -0700
 Subject: [PATCH] Fix warnings in preparation for Rust 1.54.0
@@ -9,33 +9,33 @@ Bug: 194812675
 Test: m rust
 Change-Id: I3076313ea51c6f4e74029ad9fb45d6f0b6dea460
 ---
- keystore2/legacykeystore/lib.rs            |  8 +-
- keystore2/selinux/src/lib.rs               |  2 +-
- keystore2/src/attestation_key_utils.rs     |  8 +-
- keystore2/src/database.rs                  | 93 +++++++++++-----------
- keystore2/src/database/utils.rs            |  2 +-
- keystore2/src/gc.rs                        |  2 +-
- keystore2/src/globals.rs                   |  4 +-
- keystore2/src/id_rotation.rs               |  4 +-
- keystore2/src/keystore2_main.rs            |  2 +-
- keystore2/src/km_compat/lib.rs             |  2 +-
- keystore2/src/legacy_blob.rs               |  6 +-
- keystore2/src/legacy_migrator.rs           |  9 +--
- keystore2/src/maintenance.rs               |  4 +-
- keystore2/src/raw_device.rs                |  8 +-
- keystore2/src/remote_provisioning.rs       |  2 +-
- keystore2/src/security_level.rs            | 19 +++--
- keystore2/src/service.rs                   | 41 +++++-----
- keystore2/src/shared_secret_negotiation.rs |  7 +-
- keystore2/src/super_key.rs                 | 16 ++--
- keystore2/src/utils.rs                     |  6 +-
- 20 files changed, 119 insertions(+), 126 deletions(-)
+ keystore2/legacykeystore/lib.rs            |   8 +-
+ keystore2/selinux/src/lib.rs               |   2 +-
+ keystore2/src/attestation_key_utils.rs     |   8 +-
+ keystore2/src/database.rs                  | 100 ++++++++++-----------
+ keystore2/src/database/utils.rs            |   2 +-
+ keystore2/src/gc.rs                        |   2 +-
+ keystore2/src/globals.rs                   |   4 +-
+ keystore2/src/id_rotation.rs               |   4 +-
+ keystore2/src/keystore2_main.rs            |   2 +-
+ keystore2/src/km_compat/lib.rs             |   2 +-
+ keystore2/src/legacy_blob.rs               |   6 +-
+ keystore2/src/legacy_importer.rs           |   9 +-
+ keystore2/src/maintenance.rs               |   4 +-
+ keystore2/src/raw_device.rs                |   8 +-
+ keystore2/src/remote_provisioning.rs       |   2 +-
+ keystore2/src/security_level.rs            |  17 ++--
+ keystore2/src/service.rs                   |  39 ++++----
+ keystore2/src/shared_secret_negotiation.rs |   7 +-
+ keystore2/src/super_key.rs                 |  16 ++--
+ keystore2/src/utils.rs                     |   6 +-
+ 20 files changed, 120 insertions(+), 128 deletions(-)
 
 diff --git a/keystore2/legacykeystore/lib.rs b/keystore2/legacykeystore/lib.rs
-index efa0870..e57f159 100644
+index c23c29c..3103cc3 100644
 --- a/keystore2/legacykeystore/lib.rs
 +++ b/keystore2/legacykeystore/lib.rs
-@@ -526,7 +526,7 @@ mod db_test {
+@@ -549,7 +549,7 @@ mod db_test {
      use std::time::Duration;
      use std::time::Instant;
  
@@ -44,7 +44,7 @@ index efa0870..e57f159 100644
      static TEST_BLOB1: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
      static TEST_BLOB2: &[u8] = &[2, 2, 3, 4, 5, 6, 7, 8, 9, 0];
      static TEST_BLOB3: &[u8] = &[3, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-@@ -694,9 +694,9 @@ mod db_test {
+@@ -717,9 +717,9 @@ mod db_test {
                  }
                  let mut db = DB::new(&db_path3).expect("Failed to open database.");
  
@@ -56,7 +56,7 @@ index efa0870..e57f159 100644
              }
          });
  
-@@ -710,7 +710,7 @@ mod db_test {
+@@ -733,7 +733,7 @@ mod db_test {
                  let mut db = DB::new(&db_path).expect("Failed to open database.");
  
                  // This may return Some or None but it must not fail.
@@ -79,10 +79,10 @@ index 5197cf6..cf6dfd3 100644
      }
  }
 diff --git a/keystore2/src/attestation_key_utils.rs b/keystore2/src/attestation_key_utils.rs
-index ca00539..b6a8e31 100644
+index b2bc86c..e9ce646 100644
 --- a/keystore2/src/attestation_key_utils.rs
 +++ b/keystore2/src/attestation_key_utils.rs
-@@ -60,7 +60,7 @@ pub fn get_attest_key_info(
+@@ -61,7 +61,7 @@ pub fn get_attest_key_info(
      let challenge_present = params.iter().any(|kp| kp.tag == Tag::ATTESTATION_CHALLENGE);
      match attest_key_descriptor {
          None if challenge_present => rem_prov_state
@@ -91,7 +91,7 @@ index ca00539..b6a8e31 100644
              .context(concat!(
                  "In get_attest_key_and_cert_chain: ",
                  "Trying to get remotely provisioned attestation key."
-@@ -71,7 +71,7 @@ pub fn get_attest_key_info(
+@@ -76,7 +76,7 @@ pub fn get_attest_key_info(
                  })
              }),
          None => Ok(None),
@@ -100,7 +100,7 @@ index ca00539..b6a8e31 100644
              .context("In get_attest_key_and_cert_chain: Trying to load attest key")
              .map(Some),
      }
-@@ -83,7 +83,7 @@ fn get_user_generated_attestation_key(
+@@ -88,7 +88,7 @@ fn get_user_generated_attestation_key(
      db: &mut KeystoreDB,
  ) -> Result<AttestationKeyInfo> {
      let (key_id_guard, blob, cert, blob_metadata) =
@@ -109,7 +109,7 @@ index ca00539..b6a8e31 100644
              .context("In get_user_generated_attestation_key: Failed to load blob and cert")?;
  
      let issuer_subject: Vec<u8> = parse_subject_from_certificate(&cert).context(
-@@ -105,7 +105,7 @@ fn load_attest_key_blob_and_cert(
+@@ -110,7 +110,7 @@ fn load_attest_key_blob_and_cert(
          _ => {
              let (key_id_guard, mut key_entry) = db
                  .load_key_entry(
@@ -119,7 +119,7 @@ index ca00539..b6a8e31 100644
                      KeyEntryLoadBits::BOTH,
                      caller_uid,
 diff --git a/keystore2/src/database.rs b/keystore2/src/database.rs
-index de23328..43ffbe4 100644
+index e1a704c..b5aa7c5 100644
 --- a/keystore2/src/database.rs
 +++ b/keystore2/src/database.rs
 @@ -142,7 +142,7 @@ impl KeyMetaData {
@@ -140,7 +140,7 @@ index de23328..43ffbe4 100644
                      .context("Failed to read BlobMetaEntry.")?,
              );
              Ok(())
-@@ -832,7 +832,7 @@ impl KeystoreDB {
+@@ -864,7 +864,7 @@ impl KeystoreDB {
      const UPGRADERS: &'static [fn(&Transaction) -> Result<u32>] = &[Self::from_0_to_1];
  
      /// Name of the file that holds the cross-boot persistent database.
@@ -149,7 +149,7 @@ index de23328..43ffbe4 100644
  
      /// This will create a new database connection connecting the two
      /// files persistent.sqlite and perboot.sqlite in the given directory.
-@@ -842,7 +842,7 @@ impl KeystoreDB {
+@@ -874,7 +874,7 @@ impl KeystoreDB {
      pub fn new(db_root: &Path, gc: Option<Arc<Gc>>) -> Result<Self> {
          let _wp = wd::watch_millis("KeystoreDB::new", 500);
  
@@ -158,7 +158,7 @@ index de23328..43ffbe4 100644
          let conn = Self::make_connection(&persistent_path)?;
  
          let mut db = Self { conn, gc, perboot: perboot::PERBOOT_DB.clone() };
-@@ -1244,7 +1244,7 @@ impl KeystoreDB {
+@@ -1276,7 +1276,7 @@ impl KeystoreDB {
          self.with_transaction(TransactionBehavior::Immediate, |tx| {
              let key_descriptor =
                  KeyDescriptor { domain, nspace, alias: Some(alias.to_string()), blob: None };
@@ -167,7 +167,7 @@ index de23328..43ffbe4 100644
              match result {
                  Ok(_) => Ok(true),
                  Err(error) => match error.root_cause().downcast_ref::<KsError>() {
-@@ -1290,7 +1290,7 @@ impl KeystoreDB {
+@@ -1322,7 +1322,7 @@ impl KeystoreDB {
              key_metadata.store_in_db(key_id, tx).context("KeyMetaData::store_in_db failed")?;
  
              Self::set_blob_internal(
@@ -176,7 +176,7 @@ index de23328..43ffbe4 100644
                  key_id,
                  SubComponentType::KEY_BLOB,
                  Some(blob),
-@@ -1320,10 +1320,10 @@ impl KeystoreDB {
+@@ -1352,10 +1352,10 @@ impl KeystoreDB {
                  alias: Some(key_type.alias.into()),
                  blob: None,
              };
@@ -189,7 +189,7 @@ index de23328..43ffbe4 100644
                          .context("In load_super_key. Failed to load key entry.")?;
                      Ok(Some((KEY_ID_LOCK.get(id), key_entry)))
                  }
-@@ -1383,7 +1383,7 @@ impl KeystoreDB {
+@@ -1415,7 +1415,7 @@ impl KeystoreDB {
              let (id, entry) = match id {
                  Some(id) => (
                      id,
@@ -198,7 +198,7 @@ index de23328..43ffbe4 100644
                          .context("In get_or_create_key_with.")?,
                  ),
  
-@@ -1409,7 +1409,7 @@ impl KeystoreDB {
+@@ -1441,7 +1441,7 @@ impl KeystoreDB {
                      let (blob, metadata) =
                          create_new_key().context("In get_or_create_key_with.")?;
                      Self::set_blob_internal(
@@ -207,7 +207,7 @@ index de23328..43ffbe4 100644
                          id,
                          SubComponentType::KEY_BLOB,
                          Some(&blob),
-@@ -1560,7 +1560,7 @@ impl KeystoreDB {
+@@ -1592,7 +1592,7 @@ impl KeystoreDB {
                  .context("In create_key_entry")?,
              );
              Self::set_blob_internal(
@@ -216,7 +216,7 @@ index de23328..43ffbe4 100644
                  key_id.0,
                  SubComponentType::KEY_BLOB,
                  Some(private_key),
-@@ -1569,7 +1569,7 @@ impl KeystoreDB {
+@@ -1601,7 +1601,7 @@ impl KeystoreDB {
              let mut metadata = KeyMetaData::new();
              metadata.add(KeyMetaEntry::AttestationMacedPublicKey(maced_public_key.to_vec()));
              metadata.add(KeyMetaEntry::AttestationRawPubKey(raw_public_key.to_vec()));
@@ -225,7 +225,7 @@ index de23328..43ffbe4 100644
              Ok(()).no_gc()
          })
          .context("In create_attestation_key_entry")
-@@ -1592,7 +1592,7 @@ impl KeystoreDB {
+@@ -1624,7 +1624,7 @@ impl KeystoreDB {
          let _wp = wd::watch_millis("KeystoreDB::set_blob", 500);
  
          self.with_transaction(TransactionBehavior::Immediate, |tx| {
@@ -234,7 +234,7 @@ index de23328..43ffbe4 100644
          })
          .context("In set_blob.")
      }
-@@ -1606,7 +1606,7 @@ impl KeystoreDB {
+@@ -1638,7 +1638,7 @@ impl KeystoreDB {
  
          self.with_transaction(TransactionBehavior::Immediate, |tx| {
              Self::set_blob_internal(
@@ -243,7 +243,7 @@ index de23328..43ffbe4 100644
                  Self::UNASSIGNED_KEY_ID,
                  SubComponentType::KEY_BLOB,
                  Some(blob),
-@@ -1699,7 +1699,7 @@ impl KeystoreDB {
+@@ -1731,7 +1731,7 @@ impl KeystoreDB {
      #[cfg(test)]
      fn insert_key_metadata(&mut self, key_id: &KeyIdGuard, metadata: &KeyMetaData) -> Result<()> {
          self.with_transaction(TransactionBehavior::Immediate, |tx| {
@@ -252,7 +252,7 @@ index de23328..43ffbe4 100644
          })
          .context("In insert_key_metadata.")
      }
-@@ -1761,16 +1761,16 @@ impl KeystoreDB {
+@@ -1793,16 +1793,16 @@ impl KeystoreDB {
              metadata.add(KeyMetaEntry::AttestationExpirationDate(DateTime::from_millis_epoch(
                  expiration_date,
              )));
@@ -272,7 +272,7 @@ index de23328..43ffbe4 100644
                  .context("Failed to insert cert")?;
              Ok(()).no_gc()
          })
-@@ -1914,7 +1914,7 @@ impl KeystoreDB {
+@@ -1949,7 +1949,7 @@ impl KeystoreDB {
              );
              let mut num_deleted = 0;
              for id in key_ids_to_check.iter().filter(|kt| kt.1 < curr_time).map(|kt| kt.0) {
@@ -281,7 +281,7 @@ index de23328..43ffbe4 100644
                      num_deleted += 1;
                  }
              }
-@@ -1941,7 +1941,7 @@ impl KeystoreDB {
+@@ -1976,7 +1976,7 @@ impl KeystoreDB {
                  .context("Failed to execute statement")?;
              let num_deleted = keys_to_delete
                  .iter()
@@ -290,7 +290,22 @@ index de23328..43ffbe4 100644
                  .collect::<Result<Vec<bool>>>()
                  .context("Failed to execute mark_unreferenced on a keyid")?
                  .into_iter()
-@@ -2227,7 +2227,7 @@ impl KeystoreDB {
+@@ -2114,11 +2114,10 @@ impl KeystoreDB {
+         let tx = self.conn.unchecked_transaction().context(
+             "In retrieve_attestation_key_and_cert_chain: Failed to initialize transaction.",
+         )?;
+-        let key_id: i64;
+-        match self.query_kid_for_attestation_key_and_cert_chain(&tx, domain, namespace, km_uuid)? {
++        let key_id: i64 = match self.query_kid_for_attestation_key_and_cert_chain(&tx, domain, namespace, km_uuid)? {
+             None => return Ok(None),
+-            Some(kid) => key_id = kid,
+-        }
++            Some(kid) => kid,
++        };
+         tx.commit()
+             .context("In retrieve_attestation_key_and_cert_chain: Failed to commit keyid query")?;
+         let key_id_guard = KEY_ID_LOCK.get(key_id);
+@@ -2298,7 +2297,7 @@ impl KeystoreDB {
      /// fields, and rebinds the given alias to the new key.
      /// The boolean returned is a hint for the garbage collector. If true, a key was replaced,
      /// is now unreferenced and needs to be collected.
@@ -299,7 +314,7 @@ index de23328..43ffbe4 100644
      pub fn store_new_key(
          &mut self,
          key: &KeyDescriptor,
-@@ -2259,11 +2259,11 @@ impl KeystoreDB {
+@@ -2350,11 +2349,11 @@ impl KeystoreDB {
                  key_id.id(),
                  SubComponentType::KEY_BLOB,
                  Some(blob),
@@ -313,7 +328,7 @@ index de23328..43ffbe4 100644
                      .context("Trying to insert the certificate.")?;
              }
              if let Some(cert_chain) = &cert_info.cert_chain {
-@@ -2271,7 +2271,7 @@ impl KeystoreDB {
+@@ -2362,7 +2361,7 @@ impl KeystoreDB {
                      tx,
                      key_id.id(),
                      SubComponentType::CERT_CHAIN,
@@ -322,16 +337,16 @@ index de23328..43ffbe4 100644
                      None,
                  )
                  .context("Trying to insert the certificate chain.")?;
-@@ -2279,7 +2279,7 @@ impl KeystoreDB {
+@@ -2370,7 +2369,7 @@ impl KeystoreDB {
              Self::insert_keyparameter_internal(tx, &key_id, params)
                  .context("Trying to insert key parameters.")?;
              metadata.store_in_db(key_id.id(), tx).context("Trying to insert key metadata.")?;
 -            let need_gc = Self::rebind_alias(tx, &key_id, &alias, &domain, namespace, key_type)
 +            let need_gc = Self::rebind_alias(tx, &key_id, alias, &domain, namespace, key_type)
-                 .context("Trying to rebind alias.")?;
+                 .context("Trying to rebind alias.")?
+                 || need_gc;
              Ok(key_id).do_gc(need_gc)
-         })
-@@ -2329,7 +2329,7 @@ impl KeystoreDB {
+@@ -2421,7 +2420,7 @@ impl KeystoreDB {
  
              metadata.store_in_db(key_id.id(), tx).context("Trying to insert key metadata.")?;
  
@@ -340,7 +355,7 @@ index de23328..43ffbe4 100644
                  .context("Trying to rebind alias.")?;
              Ok(key_id).do_gc(need_gc)
          })
-@@ -2398,7 +2398,7 @@ impl KeystoreDB {
+@@ -2490,7 +2489,7 @@ impl KeystoreDB {
                  if access_key.domain == Domain::APP {
                      access_key.nspace = caller_uid as i64;
                  }
@@ -349,7 +364,7 @@ index de23328..43ffbe4 100644
                      .with_context(|| format!("With key.domain = {:?}.", access_key.domain))?;
  
                  Ok((key_id, access_key, None))
-@@ -2563,7 +2563,7 @@ impl KeystoreDB {
+@@ -2655,7 +2654,7 @@ impl KeystoreDB {
              let tag = Tag(row.get(0).context("Failed to read tag.")?);
              let sec_level = SecurityLevel(row.get(2).context("Failed to read sec_level.")?);
              parameters.push(
@@ -358,7 +373,7 @@ index de23328..43ffbe4 100644
                      .context("Failed to read KeyParameter.")?,
              );
              Ok(())
-@@ -2939,7 +2939,7 @@ impl KeystoreDB {
+@@ -3031,7 +3030,7 @@ impl KeystoreDB {
                          }
                      }
                  }
@@ -367,7 +382,7 @@ index de23328..43ffbe4 100644
                      .context("In unbind_keys_for_user.")?
                      || notify_gc;
              }
-@@ -2953,16 +2953,15 @@ impl KeystoreDB {
+@@ -3045,16 +3044,15 @@ impl KeystoreDB {
          load_bits: KeyEntryLoadBits,
          key_id: i64,
      ) -> Result<KeyEntry> {
@@ -388,7 +403,7 @@ index de23328..43ffbe4 100644
              .context("In load_key_components: Trying to get KM uuid.")?;
  
          Ok(KeyEntry {
-@@ -3046,7 +3045,7 @@ impl KeystoreDB {
+@@ -3138,7 +3136,7 @@ impl KeystoreDB {
              // But even if we load the access tuple by grant here, the permission
              // check denies the attempt to create a grant by grant descriptor.
              let (key_id, access_key_descriptor, _) =
@@ -397,7 +412,7 @@ index de23328..43ffbe4 100644
                      .context("In grant")?;
  
              // Perform access control. It is vital that we return here if the permission
-@@ -3106,7 +3105,7 @@ impl KeystoreDB {
+@@ -3198,7 +3196,7 @@ impl KeystoreDB {
              // Load the key_id and complete the access control tuple.
              // We ignore the access vector here because grants cannot be granted.
              let (key_id, access_key_descriptor, _) =
@@ -406,7 +421,7 @@ index de23328..43ffbe4 100644
                      .context("In ungrant.")?;
  
              // Perform access control. We must return here if the permission
-@@ -4307,8 +4306,8 @@ mod tests {
+@@ -4472,8 +4470,8 @@ mod tests {
          let mut db = new_test_db()?;
          const SOURCE_UID: u32 = 1u32;
          const DESTINATION_UID: u32 = 2u32;
@@ -417,7 +432,7 @@ index de23328..43ffbe4 100644
          let key_id_guard =
              make_test_key_entry(&mut db, Domain::APP, SOURCE_UID as i64, SOURCE_ALIAS, None)
                  .context("test_insert_and_load_full_keyentry_from_grant_by_key_id")?;
-@@ -4376,8 +4375,8 @@ mod tests {
+@@ -4541,8 +4539,8 @@ mod tests {
          const SOURCE_UID: u32 = 1u32;
          const DESTINATION_UID: u32 = 2u32;
          const DESTINATION_NAMESPACE: i64 = 1000i64;
@@ -428,7 +443,7 @@ index de23328..43ffbe4 100644
          let key_id_guard =
              make_test_key_entry(&mut db, Domain::APP, SOURCE_UID as i64, SOURCE_ALIAS, None)
                  .context("test_insert_and_load_full_keyentry_from_grant_by_key_id")?;
-@@ -4444,8 +4443,8 @@ mod tests {
+@@ -4609,8 +4607,8 @@ mod tests {
          let mut db = new_test_db()?;
          const SOURCE_UID: u32 = 1u32;
          const DESTINATION_UID: u32 = 2u32;
@@ -439,7 +454,7 @@ index de23328..43ffbe4 100644
          let key_id_guard =
              make_test_key_entry(&mut db, Domain::APP, SOURCE_UID as i64, SOURCE_ALIAS, None)
                  .context("test_insert_and_load_full_keyentry_from_grant_by_key_id")?;
-@@ -4477,9 +4476,9 @@ mod tests {
+@@ -4642,9 +4640,9 @@ mod tests {
  
      #[test]
      fn test_upgrade_0_to_1() {
@@ -452,7 +467,7 @@ index de23328..43ffbe4 100644
          const UID: u32 = 33;
          let temp_dir = Arc::new(TempDir::new("test_upgrade_0_to_1").unwrap());
          let mut db = KeystoreDB::new(temp_dir.path(), None).unwrap();
-@@ -5551,7 +5550,7 @@ mod tests {
+@@ -5716,7 +5714,7 @@ mod tests {
          )?;
  
          // Check if super key exists.
@@ -461,7 +476,7 @@ index de23328..43ffbe4 100644
  
          let (_, key_entry) = db.load_super_key(&USER_SUPER_KEY, 1)?.unwrap();
          let loaded_super_key = SuperKeyManager::extract_super_key_from_key_entry(
-@@ -5658,7 +5657,7 @@ mod tests {
+@@ -5822,7 +5820,7 @@ mod tests {
                      && updated_stats[&k].unused_size == baseline[&k].unused_size,
                  "updated_stats:\n{}\nbaseline:\n{}",
                  stringify(&updated_stats),
@@ -497,7 +512,7 @@ index 2010c79..25f08c8 100644
              }
          }
 diff --git a/keystore2/src/globals.rs b/keystore2/src/globals.rs
-index 8212213..471eb05 100644
+index 1111d75..f797433 100644
 --- a/keystore2/src/globals.rs
 +++ b/keystore2/src/globals.rs
 @@ -261,7 +261,7 @@ pub fn get_keymint_device(
@@ -567,10 +582,10 @@ index 56c35bf..8d7310b 100644
          result.unwrap()
      }
 diff --git a/keystore2/src/legacy_blob.rs b/keystore2/src/legacy_blob.rs
-index 6b16d2e..7454cca 100644
+index 8cbcda1..45cedc5 100644
 --- a/keystore2/src/legacy_blob.rs
 +++ b/keystore2/src/legacy_blob.rs
-@@ -416,14 +416,14 @@ impl LegacyBlobLoader {
+@@ -489,14 +489,14 @@ impl LegacyBlobLoader {
              BlobValue::Encrypted { iv, tag, data } => Ok(Blob {
                  flags: blob.flags,
                  value: BlobValue::Decrypted(
@@ -587,7 +602,7 @@ index 6b16d2e..7454cca 100644
                          .context("In new_from_stream_decrypt_with.")?,
                  ),
              }),
-@@ -836,7 +836,7 @@ impl LegacyBlobLoader {
+@@ -1017,7 +1017,7 @@ impl LegacyBlobLoader {
          // in are all in the printable range that don't get mangled.
          for prefix in Self::KNOWN_KEYSTORE_PREFIXES {
              if let Some(alias) = encoded_alias.strip_prefix(prefix) {
@@ -596,20 +611,20 @@ index 6b16d2e..7454cca 100644
              }
          }
          None
-diff --git a/keystore2/src/legacy_migrator.rs b/keystore2/src/legacy_migrator.rs
-index f92fd45..b09d104 100644
---- a/keystore2/src/legacy_migrator.rs
-+++ b/keystore2/src/legacy_migrator.rs
-@@ -567,7 +567,7 @@ impl LegacyMigratorState {
+diff --git a/keystore2/src/legacy_importer.rs b/keystore2/src/legacy_importer.rs
+index ee5a13f..5ff9cdc 100644
+--- a/keystore2/src/legacy_importer.rs
++++ b/keystore2/src/legacy_importer.rs
+@@ -730,7 +730,7 @@ impl LegacyImporterState {
  
          if let Some(super_key) = self
              .legacy_loader
 -            .load_super_key(user_id, &pw)
 +            .load_super_key(user_id, pw)
-             .context("In check_and_migrate_super_key: Trying to load legacy super key.")?
+             .context("In check_and_import_super_key: Trying to load legacy super key.")?
          {
              let (blob, blob_metadata) =
-@@ -630,8 +630,7 @@ impl LegacyMigratorState {
+@@ -793,8 +793,7 @@ impl LegacyImporterState {
  
          for (uid, alias) in aliases
              .into_iter()
@@ -619,7 +634,7 @@ index f92fd45..b09d104 100644
          {
              let (km_blob_params, _, _) = self
                  .legacy_loader
-@@ -724,8 +723,8 @@ impl Deref for LegacyBlob {
+@@ -892,8 +891,8 @@ impl Deref for LegacyBlob<'_> {
  
      fn deref(&self) -> &Self::Target {
          match self {
@@ -627,19 +642,19 @@ index f92fd45..b09d104 100644
 -            Self::ZVec(v) => &v,
 +            Self::Vec(v) => v,
 +            Self::ZVec(v) => v,
+             Self::Ref(v) => v,
          }
      }
- }
 diff --git a/keystore2/src/maintenance.rs b/keystore2/src/maintenance.rs
-index 3180e5d..42f674e 100644
+index ced8986..0d784c6 100644
 --- a/keystore2/src/maintenance.rs
 +++ b/keystore2/src/maintenance.rs
-@@ -223,9 +223,9 @@ impl Maintenance {
+@@ -227,9 +227,9 @@ impl Maintenance {
              let key_id_guard = match source.domain {
                  Domain::APP | Domain::SELINUX | Domain::KEY_ID => {
-                     let (key_id_guard, _) = LEGACY_MIGRATOR
--                        .with_try_migrate(&source, caller_uid, || {
-+                        .with_try_migrate(source, caller_uid, || {
+                     let (key_id_guard, _) = LEGACY_IMPORTER
+-                        .with_try_import(&source, caller_uid, super_key, || {
++                        .with_try_import(source, caller_uid, super_key, || {
                              db.borrow_mut().load_key_entry(
 -                                &source,
 +                                source,
@@ -647,10 +662,10 @@ index 3180e5d..42f674e 100644
                                  KeyEntryLoadBits::NONE,
                                  caller_uid,
 diff --git a/keystore2/src/raw_device.rs b/keystore2/src/raw_device.rs
-index cd54915..fac0e67 100644
+index a883987..a2353a9 100644
 --- a/keystore2/src/raw_device.rs
 +++ b/keystore2/src/raw_device.rs
-@@ -120,7 +120,7 @@ impl KeyMintDevice {
+@@ -121,7 +121,7 @@ impl KeyMintDevice {
          blob_metadata.add(BlobMetaEntry::KmUuid(self.km_uuid));
  
          db.store_new_key(
@@ -658,8 +673,8 @@ index cd54915..fac0e67 100644
 +            key_desc,
              key_type,
              &key_parameters,
-             &(&creation_result.keyBlob, &blob_metadata),
-@@ -148,7 +148,7 @@ impl KeyMintDevice {
+             &BlobInfo::new(&creation_result.keyBlob, &blob_metadata),
+@@ -149,7 +149,7 @@ impl KeyMintDevice {
          key_desc: &KeyDescriptor,
          key_type: KeyType,
      ) -> Result<(KeyIdGuard, KeyEntry)> {
@@ -668,7 +683,7 @@ index cd54915..fac0e67 100644
              .context("In lookup_from_desc: load_key_entry failed.")
      }
  
-@@ -228,8 +228,8 @@ impl KeyMintDevice {
+@@ -229,8 +229,8 @@ impl KeyMintDevice {
              };
          }
  
@@ -680,10 +695,10 @@ index cd54915..fac0e67 100644
          .context("In lookup_or_generate_key: generate_and_store_key failed")?;
          Self::lookup_from_desc(db, key_desc, key_type)
 diff --git a/keystore2/src/remote_provisioning.rs b/keystore2/src/remote_provisioning.rs
-index 212bf39..848a73a 100644
+index 369be7c..1f2d6f2 100644
 --- a/keystore2/src/remote_provisioning.rs
 +++ b/keystore2/src/remote_provisioning.rs
-@@ -182,7 +182,7 @@ impl RemProvState {
+@@ -187,7 +187,7 @@ impl RemProvState {
              // and therefore will not be attested.
              Ok(None)
          } else {
@@ -693,7 +708,7 @@ index 212bf39..848a73a 100644
                      log::error!(
                          concat!(
 diff --git a/keystore2/src/security_level.rs b/keystore2/src/security_level.rs
-index 1b2e348..35f6adc 100644
+index 76110b3..4767f77 100644
 --- a/keystore2/src/security_level.rs
 +++ b/keystore2/src/security_level.rs
 @@ -132,8 +132,7 @@ impl KeystoreSecurityLevel {
@@ -706,22 +721,19 @@ index 1b2e348..35f6adc 100644
                          .copied()
                          .collect(),
                  ),
-@@ -243,9 +242,9 @@ impl KeystoreSecurityLevel {
-             _ => {
-                 let (key_id_guard, mut key_entry) = DB
+@@ -247,7 +246,7 @@ impl KeystoreSecurityLevel {
                      .with::<_, Result<(KeyIdGuard, KeyEntry)>>(|db| {
--                        LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
-+                        LEGACY_MIGRATOR.with_try_migrate(key, caller_uid, || {
+                         LEGACY_IMPORTER.with_try_import(key, caller_uid, super_key, || {
                              db.borrow_mut().load_key_entry(
 -                                &key,
 +                                key,
                                  KeyType::Client,
                                  KeyEntryLoadBits::KM,
                                  caller_uid,
-@@ -317,14 +316,14 @@ impl KeystoreSecurityLevel {
+@@ -319,14 +318,14 @@ impl KeystoreSecurityLevel {
                  key_id_guard,
                  &km_blob,
-                 &blob_metadata,
+                 blob_metadata.km_uuid().copied(),
 -                &operation_parameters,
 +                operation_parameters,
                  |blob| loop {
@@ -735,16 +747,16 @@ index 1b2e348..35f6adc 100644
                      }) {
                          Err(Error::Km(ErrorCode::TOO_MANY_OPERATIONS)) => {
                              self.operation_db.prune(caller_uid, forced)?;
-@@ -721,7 +720,7 @@ impl KeystoreSecurityLevel {
+@@ -742,7 +741,7 @@ impl KeystoreSecurityLevel {
              .with(|db| {
-                 LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
+                 LEGACY_IMPORTER.with_try_import(&key, caller_uid, super_key, || {
                      db.borrow_mut().load_key_entry(
 -                        &wrapping_key,
 +                        wrapping_key,
                          KeyType::Client,
                          KeyEntryLoadBits::KM,
                          caller_uid,
-@@ -780,7 +779,7 @@ impl KeystoreSecurityLevel {
+@@ -801,7 +800,7 @@ impl KeystoreSecurityLevel {
                          wrapped_data,
                          wrapping_blob,
                          masking_key,
@@ -753,7 +765,7 @@ index 1b2e348..35f6adc 100644
                          pw_sid,
                          fp_sid,
                      ))?;
-@@ -800,7 +799,7 @@ impl KeystoreSecurityLevel {
+@@ -821,7 +820,7 @@ impl KeystoreSecurityLevel {
          upgraded_blob: &[u8],
      ) -> Result<()> {
          let (upgraded_blob_to_be_stored, new_blob_metadata) =
@@ -762,7 +774,7 @@ index 1b2e348..35f6adc 100644
                  .context("In store_upgraded_keyblob: Failed to handle super encryption.")?;
  
          let mut new_blob_metadata = new_blob_metadata.unwrap_or_default();
-@@ -979,7 +978,7 @@ impl KeystoreSecurityLevel {
+@@ -977,7 +976,7 @@ impl KeystoreSecurityLevel {
          {
              let _wp =
                  self.watch_millis("In KeystoreSecuritylevel::delete_key: calling deleteKey", 500);
@@ -772,34 +784,34 @@ index 1b2e348..35f6adc 100644
      }
  }
 diff --git a/keystore2/src/service.rs b/keystore2/src/service.rs
-index d65743d..c32f6a3 100644
+index 646e7b1..3b4b271 100644
 --- a/keystore2/src/service.rs
 +++ b/keystore2/src/service.rs
-@@ -134,9 +134,9 @@ impl KeystoreService {
-         let caller_uid = ThreadState::get_calling_uid();
+@@ -137,9 +137,9 @@ impl KeystoreService {
+ 
          let (key_id_guard, mut key_entry) = DB
              .with(|db| {
--                LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
-+                LEGACY_MIGRATOR.with_try_migrate(key, caller_uid, || {
+-                LEGACY_IMPORTER.with_try_import(&key, caller_uid, super_key, || {
++                LEGACY_IMPORTER.with_try_import(key, caller_uid, super_key, || {
                      db.borrow_mut().load_key_entry(
 -                        &key,
 +                        key,
                          KeyType::Client,
                          KeyEntryLoadBits::PUBLIC,
                          caller_uid,
-@@ -185,9 +185,9 @@ impl KeystoreService {
-     ) -> Result<()> {
-         let caller_uid = ThreadState::get_calling_uid();
+@@ -190,9 +190,9 @@ impl KeystoreService {
+         let super_key = SUPER_KEY.get_per_boot_key_by_user_id(uid_to_android_user(caller_uid));
+ 
          DB.with::<_, Result<()>>(|db| {
--            let entry = match LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
-+            let entry = match LEGACY_MIGRATOR.with_try_migrate(key, caller_uid, || {
+-            let entry = match LEGACY_IMPORTER.with_try_import(&key, caller_uid, super_key, || {
++            let entry = match LEGACY_IMPORTER.with_try_import(key, caller_uid, super_key, || {
                  db.borrow_mut().load_key_entry(
 -                    &key,
 +                    key,
                      KeyType::Client,
                      KeyEntryLoadBits::NONE,
                      caller_uid,
-@@ -271,21 +271,18 @@ impl KeystoreService {
+@@ -276,21 +276,18 @@ impl KeystoreService {
          // If the first check fails we check if the caller has the list permission allowing to list
          // any namespace. In that case we also adjust the queried namespace if a specific uid was
          // selected.
@@ -830,31 +842,28 @@ index d65743d..c32f6a3 100644
 -            Ok(()) => {}
          };
  
-         let mut result = LEGACY_MIGRATOR
-@@ -309,8 +306,8 @@ impl KeystoreService {
-     fn delete_key(&self, key: &KeyDescriptor) -> Result<()> {
-         let caller_uid = ThreadState::get_calling_uid();
+         let mut result = LEGACY_IMPORTER
+@@ -316,8 +313,8 @@ impl KeystoreService {
+         let super_key = SUPER_KEY.get_per_boot_key_by_user_id(uid_to_android_user(caller_uid));
+ 
          DB.with(|db| {
--            LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
+-            LEGACY_IMPORTER.with_try_import(&key, caller_uid, super_key, || {
 -                db.borrow_mut().unbind_key(&key, KeyType::Client, caller_uid, |k, av| {
-+            LEGACY_MIGRATOR.with_try_migrate(key, caller_uid, || {
++            LEGACY_IMPORTER.with_try_import(key, caller_uid, super_key, || {
 +                db.borrow_mut().unbind_key(key, KeyType::Client, caller_uid, |k, av| {
                      check_key_permission(KeyPerm::delete(), k, &av).context("During delete_key.")
                  })
              })
-@@ -327,9 +324,9 @@ impl KeystoreService {
-     ) -> Result<KeyDescriptor> {
-         let caller_uid = ThreadState::get_calling_uid();
+@@ -338,7 +335,7 @@ impl KeystoreService {
          DB.with(|db| {
--            LEGACY_MIGRATOR.with_try_migrate(&key, caller_uid, || {
-+            LEGACY_MIGRATOR.with_try_migrate(key, caller_uid, || {
+             LEGACY_IMPORTER.with_try_import(key, caller_uid, super_key, || {
                  db.borrow_mut().grant(
 -                    &key,
 +                    key,
                      caller_uid,
                      grantee_uid as u32,
                      access_vector,
-@@ -342,7 +339,7 @@ impl KeystoreService {
+@@ -351,7 +348,7 @@ impl KeystoreService {
  
      fn ungrant(&self, key: &KeyDescriptor, grantee_uid: i32) -> Result<()> {
          DB.with(|db| {
@@ -887,10 +896,10 @@ index 64bc2c3..e32b675 100644
          .context("In list_participants.")?
          .collect())
 diff --git a/keystore2/src/super_key.rs b/keystore2/src/super_key.rs
-index f7e0375..03c5f22 100644
+index d261321..cf37942 100644
 --- a/keystore2/src/super_key.rs
 +++ b/keystore2/src/super_key.rs
-@@ -126,10 +126,8 @@ impl SuperKeyIdentifier {
+@@ -125,10 +125,8 @@ impl SuperKeyIdentifier {
      fn from_metadata(metadata: &BlobMetaData) -> Option<Self> {
          if let Some(EncryptedBy::KeyId(key_id)) = metadata.encrypted_by() {
              Some(SuperKeyIdentifier::DatabaseId(*key_id))
@@ -902,7 +911,7 @@ index f7e0375..03c5f22 100644
          }
      }
  
-@@ -398,7 +396,7 @@ impl SuperKeyManager {
+@@ -412,7 +410,7 @@ impl SuperKeyManager {
              .get_or_create_key_with(
                  Domain::APP,
                  user as u64 as i64,
@@ -911,7 +920,7 @@ index f7e0375..03c5f22 100644
                  crate::database::KEYSTORE_UUID,
                  || {
                      // For backward compatibility we need to check if there is a super key present.
-@@ -501,7 +499,7 @@ impl SuperKeyManager {
+@@ -515,7 +513,7 @@ impl SuperKeyManager {
          user_id: UserId,
      ) -> Result<bool> {
          let key_in_db = db
@@ -920,16 +929,16 @@ index f7e0375..03c5f22 100644
              .context("In super_key_exists_in_db_for_user.")?;
  
          if key_in_db {
-@@ -737,7 +735,7 @@ impl SuperKeyManager {
+@@ -751,7 +749,7 @@ impl SuperKeyManager {
          match Enforcements::super_encryption_required(domain, key_parameters, flags) {
              SuperEncryptionType::None => Ok((key_blob.to_vec(), BlobMetaData::new())),
              SuperEncryptionType::LskfBound => self
--                .super_encrypt_on_key_init(db, legacy_migrator, user_id, &key_blob)
-+                .super_encrypt_on_key_init(db, legacy_migrator, user_id, key_blob)
+-                .super_encrypt_on_key_init(db, legacy_importer, user_id, &key_blob)
++                .super_encrypt_on_key_init(db, legacy_importer, user_id, key_blob)
                  .context(concat!(
                      "In handle_super_encryption_on_key_init. ",
                      "Failed to super encrypt with LskfBound key."
-@@ -746,7 +744,7 @@ impl SuperKeyManager {
+@@ -760,7 +758,7 @@ impl SuperKeyManager {
                  let mut data = self.data.lock().unwrap();
                  let entry = data.user_keys.entry(user_id).or_default();
                  if let Some(super_key) = entry.screen_lock_bound.as_ref() {
@@ -938,7 +947,7 @@ index f7e0375..03c5f22 100644
                          "In handle_super_encryption_on_key_init. ",
                          "Failed to encrypt with ScreenLockBound key."
                      ))
-@@ -1215,8 +1213,8 @@ impl<'a> Deref for KeyBlob<'a> {
+@@ -1229,8 +1227,8 @@ impl<'a> Deref for KeyBlob<'a> {
  
      fn deref(&self) -> &Self::Target {
          match self {
@@ -950,10 +959,10 @@ index f7e0375..03c5f22 100644
          }
      }
 diff --git a/keystore2/src/utils.rs b/keystore2/src/utils.rs
-index a110c64..096e42e 100644
+index 5a42b25..8c0c06d 100644
 --- a/keystore2/src/utils.rs
 +++ b/keystore2/src/utils.rs
-@@ -44,7 +44,7 @@ use std::sync::Mutex;
+@@ -48,7 +48,7 @@ use std::sync::Mutex;
  pub fn check_keystore_permission(perm: KeystorePerm) -> anyhow::Result<()> {
      ThreadState::with_calling_sid(|calling_sid| {
          permission::check_keystore_permission(
@@ -962,7 +971,7 @@ index a110c64..096e42e 100644
                  "In check_keystore_permission: Cannot check permission without calling_sid.",
              )?,
              perm,
-@@ -58,7 +58,7 @@ pub fn check_keystore_permission(perm: KeystorePerm) -> anyhow::Result<()> {
+@@ -62,7 +62,7 @@ pub fn check_keystore_permission(perm: KeystorePerm) -> anyhow::Result<()> {
  pub fn check_grant_permission(access_vec: KeyPermSet, key: &KeyDescriptor) -> anyhow::Result<()> {
      ThreadState::with_calling_sid(|calling_sid| {
          permission::check_grant_permission(
@@ -971,7 +980,7 @@ index a110c64..096e42e 100644
                  "In check_grant_permission: Cannot check permission without calling_sid.",
              )?,
              access_vec,
-@@ -78,7 +78,7 @@ pub fn check_key_permission(
+@@ -82,7 +82,7 @@ pub fn check_key_permission(
      ThreadState::with_calling_sid(|calling_sid| {
          permission::check_key_permission(
              ThreadState::get_calling_uid(),
