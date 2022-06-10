@@ -1,4 +1,4 @@
-From 3bb378569dbc1d0538a881b713907a456d5abb6b Mon Sep 17 00:00:00 2001
+From d2fe72354903d44015f23d844cc595edc6bddcce Mon Sep 17 00:00:00 2001
 From: jhonboy121 <alfredmathew05@gmail.com>
 Date: Tue, 1 Feb 2022 19:54:15 +0530
 Subject: [PATCH 1/1] base: introduce app lock [1/4]
@@ -414,12 +414,12 @@ index 40041486f6a6..01e94908948b 100644
 +    }
  }
 diff --git a/core/res/AndroidManifest.xml b/core/res/AndroidManifest.xml
-index efdf150ba936..da2c8d3d9ea7 100644
+index 7fc157cb415f..84b8ffbde559 100644
 --- a/core/res/AndroidManifest.xml
 +++ b/core/res/AndroidManifest.xml
-@@ -708,6 +708,9 @@
+@@ -709,6 +709,9 @@
      <protected-broadcast android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
-     <protected-broadcast android:name="android.app.action.ACTION_SHOW_NEW_USER_DISCLAIMER" />
+     <protected-broadcast android:name="android.app.action.SHOW_NEW_USER_DISCLAIMER" />
  
 +    <!-- App lock -->
 +    <protected-broadcast android:name="com.android.server.app.AppLockManagerService.APP_LOCK_TIMEOUT" />
@@ -427,7 +427,7 @@ index efdf150ba936..da2c8d3d9ea7 100644
      <!-- Used to force the state of battery led -->
      <protected-broadcast android:name="android.intent.action.BATTERY_LED_STATE_OVERRIDE" />
  
-@@ -5837,6 +5840,11 @@
+@@ -5838,6 +5841,11 @@
      <permission android:name="android.permission.READ_GLOBAL_APP_SEARCH_DATA"
                  android:protectionLevel="internal|role" />
  
@@ -478,10 +478,10 @@ index b24e81606c7d..2c3597ae4c92 100644
 +
  </resources>
 diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationViewHierarchyManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationViewHierarchyManager.java
-index 464b2b69c58e..bdf90862f2c2 100644
+index e0e928073336..c8b6baf2376a 100644
 --- a/packages/SystemUI/src/com/android/systemui/statusbar/NotificationViewHierarchyManager.java
 +++ b/packages/SystemUI/src/com/android/systemui/statusbar/NotificationViewHierarchyManager.java
-@@ -186,13 +186,15 @@ public class NotificationViewHierarchyManager implements DynamicPrivacyControlle
+@@ -199,13 +199,15 @@ public class NotificationViewHierarchyManager implements DynamicPrivacyControlle
                      || !mLockscreenUserManager.needsSeparateWorkChallenge(userId))) {
                  userPublic = false;
              }
@@ -2071,7 +2071,7 @@ index 0528b95d1a6e..3e0989876611 100644
 +        boolean isBubbleUpSuppressed, int userId);
  }
 diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
-index 609c6596a812..f5882fb33dea 100755
+index b60dba4167b5..a7fb77b5f5b3 100755
 --- a/services/core/java/com/android/server/notification/NotificationManagerService.java
 +++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
 @@ -34,6 +34,7 @@ import static android.app.NotificationManager.ACTION_NOTIFICATION_CHANNEL_GROUP_
@@ -2210,7 +2210,7 @@ index 609c6596a812..f5882fb33dea 100755
  
          if ((notification.flags & Notification.FLAG_FOREGROUND_SERVICE) != 0) {
              final boolean fgServiceShown = channel.isFgServiceShown();
-@@ -8038,13 +8082,15 @@ public class NotificationManagerService extends SystemService {
+@@ -8040,13 +8084,15 @@ public class NotificationManagerService extends SystemService {
          float mRankingScore;
          boolean mIsConversation;
  
@@ -2227,7 +2227,7 @@ index 609c6596a812..f5882fb33dea 100755
              mPosition = position;
              mVisibility = visibility;
              mShowBadge = showBadge;
-@@ -8061,6 +8107,7 @@ public class NotificationManagerService extends SystemService {
+@@ -8063,6 +8109,7 @@ public class NotificationManagerService extends SystemService {
              mImportance = importance;
              mRankingScore = rankingScore;
              mIsConversation = isConversation;
@@ -2235,7 +2235,7 @@ index 609c6596a812..f5882fb33dea 100755
          }
  
          // Returns whether the provided NotificationRecord differs from the cached data in any way.
-@@ -8079,7 +8126,8 @@ public class NotificationManagerService extends SystemService {
+@@ -8081,7 +8128,8 @@ public class NotificationManagerService extends SystemService {
                      || !Objects.equals(mSuppressVisually, r.getSuppressedVisualEffects())
                      || !Objects.equals(mSystemSmartActions, r.getSystemGeneratedSmartActions())
                      || !Objects.equals(mSmartReplies, r.getSmartReplies())
@@ -2245,7 +2245,7 @@ index 609c6596a812..f5882fb33dea 100755
          }
  
          // Returns whether the NotificationRecord has a change from this data for which we should
-@@ -8130,7 +8178,8 @@ public class NotificationManagerService extends SystemService {
+@@ -8132,7 +8180,8 @@ public class NotificationManagerService extends SystemService {
                          r.getSmartReplies(),
                          r.getImportance(),
                          r.getRankingScore(),
@@ -2256,10 +2256,10 @@ index 609c6596a812..f5882fb33dea 100755
                  mRankingHelper.extractSignals(r);
              }
 diff --git a/services/core/java/com/android/server/notification/NotificationRecord.java b/services/core/java/com/android/server/notification/NotificationRecord.java
-index b6b54fc19011..13f12d9fef07 100644
+index c3e0290fb530..ece7ff7b8679 100644
 --- a/services/core/java/com/android/server/notification/NotificationRecord.java
 +++ b/services/core/java/com/android/server/notification/NotificationRecord.java
-@@ -204,6 +204,8 @@ public final class NotificationRecord {
+@@ -208,6 +208,8 @@ public final class NotificationRecord {
      // are sorted.
      private boolean mPendingLogUpdate = false;
  
@@ -2268,8 +2268,8 @@ index b6b54fc19011..13f12d9fef07 100644
      public NotificationRecord(Context context, StatusBarNotification sbn,
              NotificationChannel channel) {
          this.sbn = sbn;
-@@ -1525,6 +1527,14 @@ public final class NotificationRecord {
-         return mPendingLogUpdate;
+@@ -1549,6 +1551,14 @@ public final class NotificationRecord {
+         return mPhoneNumbers;
      }
  
 +    public void setBubbleUpSuppressedByAppLock(boolean suppressed) {
@@ -2333,7 +2333,7 @@ index 3150ccd86d8c..a9689ec1b5ba 100644
 +    public abstract boolean isVisibleActivity(IBinder activityToken);
  }
 diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
-index c8227d953009..3a9eeb64c457 100644
+index f17c9f9c0a53..7759d09091c1 100644
 --- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
 +++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
 @@ -255,6 +255,7 @@ import com.android.server.am.BaseErrorDialog;
@@ -2493,5 +2493,5 @@ index 31ce27e89da8..09c896390c7f 100644
          mSystemServiceManager.startBootPhase(t, SystemService.PHASE_DEVICE_SPECIFIC_SERVICES_READY);
          t.traceEnd();
 -- 
-2.35.3
+2.36.1
 
