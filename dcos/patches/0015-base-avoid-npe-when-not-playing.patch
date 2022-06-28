@@ -1,0 +1,31 @@
+From a5ca55c94e60a2036d1affb05072492a92b6b240 Mon Sep 17 00:00:00 2001
+From: Arian <arian.kulmer@web.de>
+Date: Fri, 17 Jun 2022 13:05:01 +0200
+Subject: [PATCH] SystemUI: MediaOutputController: Avoid NPE when created with
+ empty packageName
+
+If mPackageName is empty the mMediaController won't be set in start() which
+results in a null object reference. Prior to commit d1f381a7dba1894b4c06029e305f12feb04483da
+it was possible to create MediaOutputController with an empty package name.
+In this case the dialog did not contain information about currently played
+media but provided working options to change the output device. This commit
+returns this behaviour.
+
+Change-Id: I94939467dcfe759f8e4aae88097579fb17c94a8e
+---
+ .../android/systemui/media/dialog/MediaOutputController.java    | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/media/dialog/MediaOutputController.java b/packages/SystemUI/src/com/android/systemui/media/dialog/MediaOutputController.java
+index 0d368fa5fb7f..9ee19d30a37b 100644
+--- a/packages/SystemUI/src/com/android/systemui/media/dialog/MediaOutputController.java
++++ b/packages/SystemUI/src/com/android/systemui/media/dialog/MediaOutputController.java
+@@ -494,7 +494,7 @@ boolean isActiveRemoteDevice(@NonNull MediaDevice device) {
+     }
+ 
+     private boolean isPlayBackInfoLocal() {
+-        return mMediaController.getPlaybackInfo() != null
++        return mMediaController != null && mMediaController.getPlaybackInfo() != null
+                 && mMediaController.getPlaybackInfo().getPlaybackType()
+                         == MediaController.PlaybackInfo.PLAYBACK_TYPE_LOCAL;
+     }
