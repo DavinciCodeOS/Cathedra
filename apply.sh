@@ -59,8 +59,6 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	git am -3 $CATHEDRA_PATH/dcos/patches/0007-core-jni-Switch-to-O3.patch
 	echo "[i] Applying 0001-base-Clang-15-backports.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-base-Clang-15-backports.patch
-	echo "[i] Applying 0015-base-avoid-npe-when-not-playing.patch"
-	git am -3 $CATHEDRA_PATH/dcos/patches/0015-base-avoid-npe-when-not-playing.patch
 	cd $BASE_BUILD_DIR
 
 	cd build/soong
