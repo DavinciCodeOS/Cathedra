@@ -1,0 +1,74 @@
+From 44936e4e2d8b275ba5a89b1252e5d25e6e26b82b Mon Sep 17 00:00:00 2001
+From: Laker <lakerman1987@gmail.com>
+Date: Fri, 5 Feb 2021 19:43:44 +0300
+Subject: [PATCH 8/8] PocketLock: Make using light sensor optional
+
+* On some devices using light sensor may break autobrightness
+
+Change-Id: I2bb4aad1ecc6808a4546dfdcada4335074d0d40e
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ core/java/android/pocket/PocketConstants.java               | 6 ------
+ core/res/res/values/custom_config.xml                       | 1 +
+ core/res/res/values/custom_symbols.xml                      | 1 +
+ .../core/java/com/android/server/pocket/PocketService.java  | 4 +++-
+ 4 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/core/java/android/pocket/PocketConstants.java b/core/java/android/pocket/PocketConstants.java
+index f0d08a272375..70aa74a7f2a6 100644
+--- a/core/java/android/pocket/PocketConstants.java
++++ b/core/java/android/pocket/PocketConstants.java
+@@ -16,10 +16,4 @@ public class PocketConstants {
+      */
+     public static final boolean ENABLE_PROXIMITY_JUDGE = true;
+ 
+-    /**
+-     * Whether to use light sensor to evaluate pocket state.
+-     */
+-    public static final boolean ENABLE_LIGHT_JUDGE = true;
+-
+-
+ }
+diff --git a/core/res/res/values/custom_config.xml b/core/res/res/values/custom_config.xml
+index 2a73035d7b50..2e0694e64016 100644
+--- a/core/res/res/values/custom_config.xml
++++ b/core/res/res/values/custom_config.xml
+@@ -207,5 +207,6 @@
+ 
+     <!-- Pocket Lock -->
+     <bool name="config_pocketModeSupported">true</bool>
++    <bool name="config_pocketUseLightSensor">true</bool>
+ 
+ </resources>
+diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
+index 7f29e1c3525c..3144fd672b58 100644
+--- a/core/res/res/values/custom_symbols.xml
++++ b/core/res/res/values/custom_symbols.xml
+@@ -117,4 +117,5 @@
+    <!-- Pocket bridge -->
+    <java-symbol type="string" name="config_pocketBridgeSysfsInpocket" />
+    <java-symbol type="bool" name="config_pocketModeSupported" />
++   <java-symbol type="bool" name="config_pocketUseLightSensor" />
+ </resources>
+diff --git a/services/core/java/com/android/server/pocket/PocketService.java b/services/core/java/com/android/server/pocket/PocketService.java
+index cd32d1301e14..7449179c6d5c 100644
+--- a/services/core/java/com/android/server/pocket/PocketService.java
++++ b/services/core/java/com/android/server/pocket/PocketService.java
+@@ -506,11 +506,13 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+     }
+ 
+     private void startListeningForLight() {
++        boolean mUseLightSensor = mContext.getResources().getBoolean(
++                                    com.android.internal.R.bool.config_pocketUseLightSensor);
+         if (DEBUG) {
+             Log.d(TAG, "startListeningForLight()");
+         }
+ 
+-        if (!PocketConstants.ENABLE_LIGHT_JUDGE) {
++        if (!mUseLightSensor) {
+             return;
+         }
+ 
+-- 
+2.36.1
+
