@@ -215,6 +215,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0009-Add-toggle-to-disable-battery-estimates-in-QS-2-2.patch
 	echo "[i] Applying 0017-Settings-introduce-app-lock-3-4.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0017-Settings-introduce-app-lock-3-4.patch
+	echo "[i] Applying 0027-Settings-Add-pocket-lock-toggle.patch"
+	git am -3 $CATHEDRA_PATH/dcosx/patches/0027-Settings-Add-pocket-lock-toggle.patch
 	cd $BASE_BUILD_DIR
 
 	cd device/custom/sepolicy

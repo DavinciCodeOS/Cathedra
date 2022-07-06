@@ -1,0 +1,142 @@
+From 005f0a85923ee37d98f39b99602a9b79ae88fbdd Mon Sep 17 00:00:00 2001
+From: Chris Lahaye <dev@chrislahaye.com>
+Date: Tue, 21 Feb 2017 17:33:16 -0500
+Subject: [PATCH 1/1] Settings: Add pocket lock toggle
+
+AICP Pie: Modified defaults to false.
+	Brought up to 10 with androidx
+
+@/jhenrique09 edits: Adapt strings, and also use config_pocketModeSupported on isAvailable
+
+Change-Id: I398c8f0be23c27cbcf1fb57eed44a801b31bc6c9
+Signed-off-by: Alex Naidis <alex.naidis@linux.com>
+Signed-off-by: DennySPb <dennyspb@gmail.com>
+Signed-off-by: Dmitrii <bankersenator@gmail.com>
+Signed-off-by: Joey Huab <joey@evolution-x.org>
+---
+ res/values/custom_strings.xml                 |  3 +
+ res/xml/display_settings.xml                  |  5 ++
+ src/com/android/settings/DisplaySettings.java |  2 +
+ .../PocketJudgePreferenceController.java      | 62 +++++++++++++++++++
+ 4 files changed, 72 insertions(+)
+ create mode 100644 src/com/android/settings/display/PocketJudgePreferenceController.java
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 91fadc9b5b..5662dd5bff 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -140,4 +140,7 @@
+     <string name="search">Search</string>
+     <string name="search_apps">Search apps</string>
+ 
++    <!-- Pocket judge -->
++    <string name="pocket_judge_title">Pocket detection</string>
++    <string name="pocket_judge_summary">Block screen and button inputs when device is in pocket</string>
+ </resources>
+diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
+index 41cd63db00..9bbdef36df 100644
+--- a/res/xml/display_settings.xml
++++ b/res/xml/display_settings.xml
+@@ -179,6 +179,11 @@
+             android:summary="@string/tap_to_wake_summary"
+             android:title="@string/tap_to_wake" />
+ 
++        <SwitchPreference
++            android:key="pocket_judge"
++            android:title="@string/pocket_judge_title"
++            android:summary="@string/pocket_judge_summary"/>
++
+         <com.android.settings.custom.preference.SystemSettingSwitchPreference
+             android:key="high_touch_polling_rate_enable"
+             android:title="@string/high_touch_polling_rate_title"
+diff --git a/src/com/android/settings/DisplaySettings.java b/src/com/android/settings/DisplaySettings.java
+index bd49afc3b3..4e16dbf872 100644
+--- a/src/com/android/settings/DisplaySettings.java
++++ b/src/com/android/settings/DisplaySettings.java
+@@ -24,6 +24,7 @@ import com.android.settings.dashboard.DashboardFragment;
+ import com.android.settings.display.BrightnessLevelPreferenceController;
+ import com.android.settings.display.CameraGesturePreferenceController;
+ import com.android.settings.display.LiftToWakePreferenceController;
++import com.android.settings.display.PocketJudgePreferenceController;
+ import com.android.settings.display.ScreenSaverPreferenceController;
+ import com.android.settings.display.ShowOperatorNamePreferenceController;
+ import com.android.settings.display.TapToWakePreferenceController;
+@@ -81,6 +82,7 @@ public class DisplaySettings extends DashboardFragment {
+         final List<AbstractPreferenceController> controllers = new ArrayList<>();
+         controllers.add(new CameraGesturePreferenceController(context));
+         controllers.add(new LiftToWakePreferenceController(context));
++        controllers.add(new PocketJudgePreferenceController(context));
+         controllers.add(new ScreenSaverPreferenceController(context));
+         controllers.add(new TapToWakePreferenceController(context));
+         controllers.add(new VrDisplayPreferenceController(context));
+diff --git a/src/com/android/settings/display/PocketJudgePreferenceController.java b/src/com/android/settings/display/PocketJudgePreferenceController.java
+new file mode 100644
+index 0000000000..076260d227
+--- /dev/null
++++ b/src/com/android/settings/display/PocketJudgePreferenceController.java
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2018 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
++ * except in compliance with the License. You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software distributed under the
++ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied. See the License for the specific language governing
++ * permissions and limitations under the License.
++ */
++package com.android.settings.display;
++
++import android.content.Context;
++import android.content.Intent;
++import android.provider.Settings;
++import androidx.preference.SwitchPreference;
++import androidx.preference.Preference;
++
++import com.android.settings.DisplaySettings;
++import com.android.settings.core.PreferenceControllerMixin;
++import com.android.settings.R;
++import com.android.settingslib.core.AbstractPreferenceController;
++
++import static android.provider.Settings.System.POCKET_JUDGE;
++
++public class PocketJudgePreferenceController extends AbstractPreferenceController implements
++        PreferenceControllerMixin, Preference.OnPreferenceChangeListener {
++
++    private static final String KEY_POCKET_JUDGE = "pocket_judge";
++
++    public PocketJudgePreferenceController(Context context) {
++        super(context);
++    }
++
++    @Override
++    public String getPreferenceKey() {
++        return KEY_POCKET_JUDGE;
++    }
++
++    @Override
++    public void updateState(Preference preference) {
++        int pocketJudgeValue = Settings.System.getInt(mContext.getContentResolver(),
++                POCKET_JUDGE, 0);
++        ((SwitchPreference) preference).setChecked(pocketJudgeValue != 0);
++    }
++
++    @Override
++    public boolean isAvailable() {
++        return mContext.getResources().getBoolean(
++                com.android.internal.R.bool.config_pocketModeSupported);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        boolean pocketJudgeValue = (Boolean) newValue;
++        Settings.System.putInt(mContext.getContentResolver(), POCKET_JUDGE, pocketJudgeValue ? 1 : 0);
++        return true;
++    }
++}
+-- 
+2.36.1
+
