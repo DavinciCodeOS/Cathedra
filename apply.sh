@@ -180,6 +180,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0014-SystemUI-Require-unlocking-to-use-sensitive-QS-tiles.patch
 	echo "[i] Applying 0015-base-introduce-app-lock-1-4.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0015-base-introduce-app-lock-1-4.patch
+	echo "[i] Applying 0019-pocket-introduce-pocket-judge.patch"
+	git am -3 $CATHEDRA_PATH/dcosx/patches/0019-pocket-introduce-pocket-judge.patch
 	cd $BASE_BUILD_DIR
 
 	cd system/core

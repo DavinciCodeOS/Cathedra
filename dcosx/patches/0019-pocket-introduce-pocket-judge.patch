@@ -1,0 +1,1200 @@
+From 229914b36722b962dfebb95350d9fd796be66c0a Mon Sep 17 00:00:00 2001
+From: Carlo Savignano <carlosavignano@aospa.co>
+Date: Tue, 29 Oct 2019 16:43:22 +0100
+Subject: [PATCH 1/8] pocket: introduce pocket judge
+
+ZeNiXxX
+* Bring to Android 10
+
+DennySPb: adapt to 11, 12
+
+Change-Id: I33153b451f5d38d83e226be0f76bda1ed022dd48
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ CleanSpec.mk                                  |   1 +
+ .../android/app/SystemServiceRegistry.java    |  11 +
+ core/java/android/content/Context.java        |  10 +
+ core/java/android/pocket/IPocketCallback.aidl |  24 +
+ core/java/android/pocket/IPocketService.aidl  |  39 +
+ core/java/android/pocket/PocketConstants.java |  25 +
+ core/java/android/pocket/PocketManager.java   | 168 +++++
+ core/java/android/provider/Settings.java      |   8 +
+ .../android/server/pocket/PocketService.java  | 705 ++++++++++++++++++
+ .../server/policy/PhoneWindowManager.java     |  12 +
+ .../java/com/android/server/SystemServer.java |  11 +-
+ 11 files changed, 1013 insertions(+), 1 deletion(-)
+ create mode 100644 core/java/android/pocket/IPocketCallback.aidl
+ create mode 100644 core/java/android/pocket/IPocketService.aidl
+ create mode 100644 core/java/android/pocket/PocketConstants.java
+ create mode 100644 core/java/android/pocket/PocketManager.java
+ create mode 100644 services/core/java/com/android/server/pocket/PocketService.java
+
+diff --git a/CleanSpec.mk b/CleanSpec.mk
+index 02e8eecbb721..e8ab07d64603 100644
+--- a/CleanSpec.mk
++++ b/CleanSpec.mk
+@@ -78,6 +78,7 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/symbols/system/lib/libhwui.so)
+ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/lib/libhwui.so)
+ $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/framework_intermediates/src/core/java/android/os/storage/*)
+ $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/framework_intermediates/src/core/java/android/content/IClipboard.P)
++$(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/framework_intermediates/src/core/java/android/pocket/*)
+ $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/framework_intermediates/src/telephony/java/com/android/internal/telephony/ITelephonyRegistry.P)
+ $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/android_stubs_current_intermediates)
+ $(call add-clean-step, rm -rf $(OUT_DIR)/target/common/docs/api-stubs*)
+diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
+index 6733aeea6745..57c9b2adb9a0 100644
+--- a/core/java/android/app/SystemServiceRegistry.java
++++ b/core/java/android/app/SystemServiceRegistry.java
+@@ -188,6 +188,8 @@ import android.permission.LegacyPermissionManager;
+ import android.permission.PermissionCheckerManager;
+ import android.permission.PermissionControllerManager;
+ import android.permission.PermissionManager;
++import android.pocket.IPocketService;
++import android.pocket.PocketManager;
+ import android.print.IPrintManager;
+ import android.print.PrintManager;
+ import android.scheduling.SchedulingFrameworkInitializer;
+@@ -951,6 +953,15 @@ public final class SystemServiceRegistry {
+                     }
+                 });
+ 
++        registerService(Context.POCKET_SERVICE, PocketManager.class,
++                new CachedServiceFetcher<PocketManager>() {
++                    @Override
++                    public PocketManager createService(ContextImpl ctx) {
++                        IBinder binder = ServiceManager.getService(Context.POCKET_SERVICE);
++                        IPocketService service = IPocketService.Stub.asInterface(binder);
++                        return new PocketManager(ctx.getOuterContext(), service);
++                    }});
++
+         registerService(Context.TV_INPUT_SERVICE, TvInputManager.class,
+                 new CachedServiceFetcher<TvInputManager>() {
+             @Override
+diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
+index 1c91ff79c131..f42f0077c382 100644
+--- a/core/java/android/content/Context.java
++++ b/core/java/android/content/Context.java
+@@ -5693,6 +5693,16 @@ public abstract class Context {
+      */
+     public static final String APP_LOCK_SERVICE = "app_lock";
+ 
++    /**
++     * Use with {@link #getSystemService} to retrieve a
++     * {@link android.os.PocketManager} for accessing and listening to device pocket state.
++     *
++     * @hide
++     * @see #getSystemService
++     * @see android.os.PocketManager
++     */
++    public static final String POCKET_SERVICE = "pocket";
++
+     /**
+      * Determine whether the given permission is allowed for a particular
+      * process and user ID running in the system.
+diff --git a/core/java/android/pocket/IPocketCallback.aidl b/core/java/android/pocket/IPocketCallback.aidl
+new file mode 100644
+index 000000000000..2757e75840d7
+--- /dev/null
++++ b/core/java/android/pocket/IPocketCallback.aidl
+@@ -0,0 +1,24 @@
++/**
++ * Copyright (C) 2016 The ParanoidAndroid Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package android.pocket;
++
++/** @hide */
++interface IPocketCallback {
++
++    // notify when pocket state changes.
++    void onStateChanged(boolean isDeviceInPocket, int reason);
++
++}
+diff --git a/core/java/android/pocket/IPocketService.aidl b/core/java/android/pocket/IPocketService.aidl
+new file mode 100644
+index 000000000000..054820c8c089
+--- /dev/null
++++ b/core/java/android/pocket/IPocketService.aidl
+@@ -0,0 +1,39 @@
++/**
++ * Copyright (C) 2016 The ParanoidAndroid Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package android.pocket;
++
++import android.pocket.IPocketCallback;
++
++/** @hide */
++interface IPocketService {
++
++    // add callback to get notified about pocket state.
++    void addCallback(IPocketCallback callback);
++
++    // remove callback and stop getting notified about pocket state.
++    void removeCallback(IPocketCallback callback);
++
++    // notify pocket service about intercative state changed.
++    // @see com.android.policy.PhoneWindowManager
++    void onInteractiveChanged(boolean interactive);
++
++    // external processes can request changing listening state.
++    void setListeningExternal(boolean listen);
++
++    // check if device is in pocket.
++    boolean isDeviceInPocket();
++
++}
+diff --git a/core/java/android/pocket/PocketConstants.java b/core/java/android/pocket/PocketConstants.java
+new file mode 100644
+index 000000000000..f0d08a272375
+--- /dev/null
++++ b/core/java/android/pocket/PocketConstants.java
+@@ -0,0 +1,25 @@
++package android.pocket;
++
++/**
++ * This class contains global pocket setup constants.
++ * @author Carlo Savignano
++ * @hide
++ */
++
++public class PocketConstants {
++
++    public static final boolean DEBUG = false;
++    public static final boolean DEBUG_SPEW = false;
++
++    /**
++     * Whether to use proximity sensor to evaluate pocket state.
++     */
++    public static final boolean ENABLE_PROXIMITY_JUDGE = true;
++
++    /**
++     * Whether to use light sensor to evaluate pocket state.
++     */
++    public static final boolean ENABLE_LIGHT_JUDGE = true;
++
++
++}
+diff --git a/core/java/android/pocket/PocketManager.java b/core/java/android/pocket/PocketManager.java
+new file mode 100644
+index 000000000000..82481ad80c3c
+--- /dev/null
++++ b/core/java/android/pocket/PocketManager.java
+@@ -0,0 +1,168 @@
++/**
++ * Copyright (C) 2016 The ParanoidAndroid Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package android.pocket;
++
++import android.content.Context;
++import android.os.RemoteException;
++import android.util.Log;
++import android.util.Slog;
++
++/**
++ * A class that coordinates listening for pocket state.
++ * <p>
++ * Use {@link android.content.Context#getSystemService(java.lang.String)}
++ * with argument {@link android.content.Context#POCKET_SERVICE} to get
++ * an instance of this class.
++ *
++ * Usage: import and create a final {@link IPocketCallback.Stub()} and implement your logic in
++ * {@link IPocketCallback#onStateChanged(boolean, int)}. Then add your callback to the pocket manager
++ *
++ * // define a final callback
++ * private final IPocketCallback mCallback = new IPocketCallback.Stub() {
++ *
++ *     @Override
++ *     public void onStateChanged(boolean isDeviceInPocket, int reason) {
++ *         // Your method to handle logic outside of this callback, ideally with a handler
++ *         // posting on UI Thread for view hierarchy operations or with its own background thread.
++ *         handlePocketStateChanged(isDeviceInPocket, reason);
++ *     }
++ *
++ * }
++ *
++ * // add callback to pocket manager
++ * private void addCallback() {
++ *     PocketManager manager = (PocketManager) context.getSystemService(Context.POCKET_SERVICE);
++ *     manager.addCallback(mCallback);
++ * }
++ *
++ * @author Carlo Savignano
++ * @hide
++ */
++public class PocketManager {
++
++    private static final String TAG = PocketManager.class.getSimpleName();
++
++    /**
++     * Whether {@link IPocketCallback#onStateChanged(boolean, int)}
++     * was fired because of the sensor.
++     * @see PocketService#handleDispatchCallbacks()
++     */
++    public static final int REASON_SENSOR = 0;
++
++    /**
++     * Whether {@link IPocketCallback#onStateChanged(boolean, int)}
++     * was fired because of an error while accessing service.
++     * @see #addCallback(IPocketCallback)
++     * @see #removeCallback(IPocketCallback)
++     */
++    public static final int REASON_ERROR = 1;
++
++    /**
++     * Whether {@link IPocketCallback#onStateChanged(boolean, int)}
++     * was fired because of a needed reset.
++     * @see PocketService#binderDied()
++     */
++    public static final int REASON_RESET = 2;
++
++    private Context mContext;
++    private IPocketService mService;
++
++    public PocketManager(Context context, IPocketService service) {
++        mContext = context;
++        mService = service;
++        if (mService == null) {
++            Slog.v(TAG, "PocketService was null");
++        }
++    }
++
++    /**
++     * Add pocket state callback.
++     * @see PocketService#handleRemoveCallback(IPocketCallback)
++     */
++    public void addCallback(final IPocketCallback callback) {
++        if (mService != null) try {
++            mService.addCallback(callback);
++        } catch (RemoteException e1) {
++            Log.w(TAG, "Remote exception in addCallback: ", e1);
++            if (callback != null){
++                try {
++                    callback.onStateChanged(false, REASON_ERROR);
++                } catch (RemoteException e2) {
++                    Log.w(TAG, "Remote exception in callback.onPocketStateChanged: ", e2);
++                }
++            }
++        }
++    }
++
++    /**
++     * Remove pocket state callback.
++     * @see PocketService#handleAddCallback(IPocketCallback)
++     */
++    public void removeCallback(final IPocketCallback callback) {
++        if (mService != null) try {
++            mService.removeCallback(callback);
++        } catch (RemoteException e1) {
++            Log.w(TAG, "Remote exception in removeCallback: ", e1);
++            if (callback != null){
++                try {
++                    callback.onStateChanged(false, REASON_ERROR);
++                } catch (RemoteException e2) {
++                    Log.w(TAG, "Remote exception in callback.onPocketStateChanged: ", e2);
++                }
++            }
++        }
++    }
++
++    /**
++     * Notify service about device interactive state changed.
++     * {@link PhoneWindowManager#startedWakingUp()}
++     * {@link PhoneWindowManager#startedGoingToSleep(int)}
++     */
++    public void onInteractiveChanged(boolean interactive) {
++        if (mService != null) try {
++            mService.onInteractiveChanged(interactive);
++        } catch (RemoteException e) {
++            Log.w(TAG, "Remote exception in addCallback: ", e);
++        }
++    }
++
++    /**
++     * Request listening state change by, but not limited to, external process.
++     * @see PocketService#handleSetListeningExternal(boolean)
++     */
++    public void setListeningExternal(boolean listen) {
++        if (mService != null) try {
++            mService.setListeningExternal(listen);
++        } catch (RemoteException e) {
++            Log.w(TAG, "Remote exception in setListeningExternal: ", e);
++        }
++    }
++
++    /**
++     * Return whether device is in pocket.
++     * @see PocketService#isDeviceInPocket()
++     * @return
++     */
++    public boolean isDeviceInPocket() {
++        if (mService != null) try {
++            return mService.isDeviceInPocket();
++        } catch (RemoteException e) {
++            Log.w(TAG, "Remote exception in isDeviceInPocket: ", e);
++        }
++        return false;
++    }
++
++}
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index d0dc12d2bbb0..739985702901 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -5732,6 +5732,14 @@ public final class Settings {
+          */
+         public static final String LOCKSCREEN_BATTERY_INFO = "lockscreen_battery_info";
+ 
++        /**
++         * Whether allowing pocket service to register sensors and dispatch informations.
++         *   0 = disabled
++         *   1 = enabled
++         * @hide
++         */
++        public static final String POCKET_JUDGE = "pocket_judge";
++
+         /**
+          * Keys we no longer back up under the current schema, but want to continue to
+          * process when restoring historical backup datasets.
+diff --git a/services/core/java/com/android/server/pocket/PocketService.java b/services/core/java/com/android/server/pocket/PocketService.java
+new file mode 100644
+index 000000000000..9f6ec401519a
+--- /dev/null
++++ b/services/core/java/com/android/server/pocket/PocketService.java
+@@ -0,0 +1,705 @@
++/**
++ * Copyright (C) 2016 The ParanoidAndroid Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.server.pocket;
++
++import android.Manifest;
++import android.content.Context;
++import android.content.pm.PackageManager;
++import android.database.ContentObserver;
++import android.hardware.Sensor;
++import android.hardware.SensorEvent;
++import android.hardware.SensorEventListener;
++import android.hardware.SensorManager;
++import android.os.Binder;
++import android.os.DeadObjectException;
++import android.os.Handler;
++import android.os.HandlerThread;
++import android.os.IBinder;
++import android.os.Looper;
++import android.os.Message;
++import android.os.Process;
++import android.os.RemoteException;
++import android.os.SystemClock;
++import android.os.UserHandle;
++import android.pocket.IPocketService;
++import android.pocket.IPocketCallback;
++import android.pocket.PocketConstants;
++import android.pocket.PocketManager;
++import android.provider.Settings.System;
++import android.util.Log;
++import android.util.Slog;
++
++import com.android.server.SystemService;
++
++import org.json.JSONException;
++import org.json.JSONObject;
++
++import java.io.FileDescriptor;
++import java.io.PrintWriter;
++import java.util.ArrayList;
++
++import static android.provider.Settings.System.POCKET_JUDGE;
++
++/**
++ * A service to manage multiple clients that want to listen for pocket state.
++ * The service is responsible for maintaining a list of clients and dispatching all
++ * pocket -related information.
++ *
++ * @author Carlo Savignano
++ * @hide
++ */
++public class PocketService extends SystemService implements IBinder.DeathRecipient {
++
++    private static final String TAG = PocketService.class.getSimpleName();
++    private static final boolean DEBUG = PocketConstants.DEBUG;
++
++    /**
++     * Wheater we don't have yet a valid proximity sensor event or pocket service not running.
++     */
++    private static final int PROXIMITY_UNKNOWN = 0;
++
++    /**
++     * Proximity sensor has been registered, onSensorChanged() has been called and we have a
++     * valid event value which determined proximity sensor is covered.
++     */
++    private static final int PROXIMITY_POSITIVE = 1;
++
++    /**
++     * Proximity sensor has been registered, onSensorChanged() has been called and we have a
++     * valid event value which determined proximity sensor is not covered.
++     */
++    private static final int PROXIMITY_NEGATIVE = 2;
++
++    /**
++     * Wheater we don't have yet a valid light sensor event or pocket service not running.
++     */
++    private static final int LIGHT_UNKNOWN = 0;
++
++    /**
++     * Light sensor has been registered, onSensorChanged() has been called and we have a
++     * valid event value which determined available light is in pocket range.
++     */
++    private static final int LIGHT_POCKET = 1;
++
++    /**
++     * Light sensor has been registered, onSensorChanged() has been called and we have a
++     * valid event value which determined available light is outside pocket range.
++     */
++    private static final int LIGHT_AMBIENT = 2;
++
++    /**
++     * Light sensor maximum value registered in pocket with up to semi-transparent fabric.
++     */
++    private static final float POCKET_LIGHT_MAX_THRESHOLD = 3.0f;
++
++    private final ArrayList<IPocketCallback> mCallbacks= new ArrayList<>();
++
++    private Context mContext;
++    private boolean mEnabled;
++    private boolean mSystemReady;
++    private boolean mSystemBooted;
++    private boolean mInteractive;
++    private boolean mPending;
++    private PocketHandler mHandler;
++    private PocketObserver mObserver;
++    private SensorManager mSensorManager;
++
++    // proximity
++    private int mProximityState = PROXIMITY_UNKNOWN;
++    private int mLastProximityState = PROXIMITY_UNKNOWN;
++    private float mProximityMaxRange;
++    private boolean mProximityRegistered;
++    private Sensor mProximitySensor;
++
++    // light
++    private int mLightState = LIGHT_UNKNOWN;
++    private int mLastLightState = LIGHT_UNKNOWN;
++    private float mLightMaxRange;
++    private boolean mLightRegistered;
++    private Sensor mLightSensor;
++
++    public PocketService(Context context) {
++        super(context);
++        mContext = context;
++        HandlerThread handlerThread = new HandlerThread(TAG, Process.THREAD_PRIORITY_BACKGROUND);
++        handlerThread.start();
++        mHandler = new PocketHandler(handlerThread.getLooper());
++        mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
++        mProximitySensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
++        if (mProximitySensor != null) {
++            mProximityMaxRange = mProximitySensor.getMaximumRange();
++        }
++        mLightSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
++        if (mLightSensor != null) {
++            mLightMaxRange = mLightSensor.getMaximumRange();
++        }
++        mObserver = new PocketObserver(mHandler);
++        mObserver.onChange(true);
++        mObserver.register();
++    }
++
++    private class PocketObserver extends ContentObserver {
++
++        private boolean mRegistered;
++
++        public PocketObserver(Handler handler) {
++            super(handler);
++        }
++
++        @Override
++        public void onChange(boolean selfChange) {
++            final boolean enabled = System.getIntForUser(mContext.getContentResolver(),
++                    POCKET_JUDGE, 0 /* default */, UserHandle.USER_CURRENT) != 0;
++            setEnabled(enabled);
++        }
++
++        public void register() {
++            if (!mRegistered) {
++                mContext.getContentResolver().registerContentObserver(
++                        System.getUriFor(POCKET_JUDGE), true, this);
++                mRegistered = true;
++            }
++        }
++
++        public void unregister() {
++            if (mRegistered) {
++                mContext.getContentResolver().unregisterContentObserver(this);
++                mRegistered = false;
++            }
++        }
++
++    }
++
++    private class PocketHandler extends Handler {
++
++        public static final int MSG_SYSTEM_READY = 0;
++        public static final int MSG_SYSTEM_BOOTED = 1;
++        public static final int MSG_DISPATCH_CALLBACKS = 2;
++        public static final int MSG_ADD_CALLBACK = 3;
++        public static final int MSG_REMOVE_CALLBACK = 4;
++        public static final int MSG_INTERACTIVE_CHANGED = 5;
++        public static final int MSG_SENSOR_EVENT_PROXIMITY = 6;
++        public static final int MSG_SENSOR_EVENT_LIGHT = 7;
++        public static final int MSG_UNREGISTER_TIMEOUT = 8;
++        public static final int MSG_SET_LISTEN_EXTERNAL = 9;
++
++        public PocketHandler(Looper looper) {
++            super(looper);
++        }
++
++        @Override
++        public void handleMessage(android.os.Message msg) {
++            switch (msg.what) {
++                case MSG_SYSTEM_READY:
++                    handleSystemReady();
++                    break;
++                case MSG_SYSTEM_BOOTED:
++                    handleSystemBooted();
++                    break;
++                case MSG_DISPATCH_CALLBACKS:
++                    handleDispatchCallbacks();
++                    break;
++                case MSG_ADD_CALLBACK:
++                    handleAddCallback((IPocketCallback) msg.obj);
++                    break;
++                case MSG_REMOVE_CALLBACK:
++                    handleRemoveCallback((IPocketCallback) msg.obj);
++                    break;
++                case MSG_INTERACTIVE_CHANGED:
++                    handleInteractiveChanged(msg.arg1 != 0);
++                    break;
++                case MSG_SENSOR_EVENT_PROXIMITY:
++                    handleProximitySensorEvent((SensorEvent) msg.obj);
++                    break;
++                case MSG_SENSOR_EVENT_LIGHT:
++                    handleLightSensorEvent((SensorEvent) msg.obj);
++                    break;
++                case MSG_UNREGISTER_TIMEOUT:
++                    handleUnregisterTimeout();
++                    break;
++                case MSG_SET_LISTEN_EXTERNAL:
++                    handleSetListeningExternal(msg.arg1 != 0);
++                    break;
++                default:
++                    Slog.w(TAG, "Unknown message:" + msg.what);
++            }
++        }
++    }
++
++    @Override
++    public void onBootPhase(int phase) {
++        switch(phase) {
++            case PHASE_SYSTEM_SERVICES_READY:
++                mHandler.sendEmptyMessage(PocketHandler.MSG_SYSTEM_READY);
++                break;
++            case PHASE_BOOT_COMPLETED:
++                mHandler.sendEmptyMessage(PocketHandler.MSG_SYSTEM_BOOTED);
++                break;
++            default:
++                Slog.w(TAG, "Un-handled boot phase:" + phase);
++                break;
++        }
++    }
++
++    @Override
++    public void onStart() {
++        publishBinderService(Context.POCKET_SERVICE, new PocketServiceWrapper());
++    }
++
++    @Override
++    public void binderDied() {
++        synchronized (mCallbacks) {
++            mProximityState = PROXIMITY_UNKNOWN;
++            int callbacksSize = mCallbacks.size();
++            for (int i = callbacksSize - 1; i >= 0; i--) {
++                if (mCallbacks.get(i) != null) {
++                    try {
++                        mCallbacks.get(i).onStateChanged(false, PocketManager.REASON_RESET);
++                    } catch (DeadObjectException e) {
++                        Slog.w(TAG, "Death object while invoking sendPocketState: ", e);
++                    } catch (RemoteException e) {
++                        Slog.w(TAG, "Failed to invoke sendPocketState: ", e);
++                    }
++                }
++            }
++            mCallbacks.clear();
++        }
++        unregisterSensorListeners();
++        mObserver.unregister();
++    }
++
++    private final class PocketServiceWrapper extends IPocketService.Stub {
++
++        @Override // Binder call
++        public void addCallback(final IPocketCallback callback) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_ADD_CALLBACK;
++            msg.obj = callback;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override // Binder call
++        public void removeCallback(final IPocketCallback callback) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_REMOVE_CALLBACK;
++            msg.obj = callback;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override // Binder call
++        public void onInteractiveChanged(final boolean interactive) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_INTERACTIVE_CHANGED;
++            msg.arg1 = interactive ? 1 : 0;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override // Binder call
++        public void setListeningExternal(final boolean listen) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_SET_LISTEN_EXTERNAL;
++            msg.arg1 = listen ? 1 : 0;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override // Binder call
++        public boolean isDeviceInPocket() {
++            final long ident = Binder.clearCallingIdentity();
++            try {
++                if (!mSystemReady || !mSystemBooted) {
++                    return false;
++                }
++                return PocketService.this.isDeviceInPocket();
++            } finally {
++                Binder.restoreCallingIdentity(ident);
++            }
++        }
++
++        @Override // Binder call
++        protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
++            if (mContext.checkCallingOrSelfPermission(Manifest.permission.DUMP)
++                    != PackageManager.PERMISSION_GRANTED) {
++                pw.println("Permission Denial: can't dump Pocket from from pid="
++                        + Binder.getCallingPid()
++                        + ", uid=" + Binder.getCallingUid());
++                return;
++            }
++
++            final long ident = Binder.clearCallingIdentity();
++            try {
++                dumpInternal(pw);
++            } finally {
++                Binder.restoreCallingIdentity(ident);
++            }
++        }
++
++    }
++
++    private final SensorEventListener mProximityListener = new SensorEventListener() {
++        @Override
++        public void onSensorChanged(SensorEvent sensorEvent) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_SENSOR_EVENT_PROXIMITY;
++            msg.obj = sensorEvent;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override
++        public void onAccuracyChanged(Sensor sensor, int i) { }
++    };
++
++    private final SensorEventListener mLightListener = new SensorEventListener() {
++        @Override
++        public void onSensorChanged(SensorEvent sensorEvent) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_SENSOR_EVENT_LIGHT;
++            msg.obj = sensorEvent;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override
++        public void onAccuracyChanged(Sensor sensor, int i) { }
++    };
++
++    private boolean isDeviceInPocket() {
++        if (mLightState != LIGHT_UNKNOWN) {
++            return mProximityState == PROXIMITY_POSITIVE
++                    && mLightState == LIGHT_POCKET;
++        }
++        return mProximityState == PROXIMITY_POSITIVE;
++    }
++
++    private void setEnabled(boolean enabled) {
++        if (enabled != mEnabled) {
++            mEnabled = enabled;
++            mHandler.removeCallbacksAndMessages(null);
++            update();
++        }
++    }
++
++    private void update() {
++        if (!mEnabled || mInteractive) {
++            if (mEnabled && isDeviceInPocket()) {
++                // if device is judged to be in pocket while switching
++                // to interactive state, we need to keep monitoring.
++                return;
++            }
++            unregisterSensorListeners();
++        } else {
++            mHandler.removeMessages(PocketHandler.MSG_UNREGISTER_TIMEOUT);
++            registerSensorListeners();
++        }
++    }
++
++    private void registerSensorListeners() {
++        startListeningForProximity();
++        startListeningForLight();
++    }
++
++    private void unregisterSensorListeners() {
++        stopListeningForProximity();
++        stopListeningForLight();
++    }
++
++    private void startListeningForProximity() {
++        if (DEBUG) {
++            Log.d(TAG, "startListeningForProximity()");
++        }
++
++        if (!PocketConstants.ENABLE_PROXIMITY_JUDGE) {
++            return;
++        }
++
++        if (mProximitySensor == null) {
++            Log.d(TAG, "Cannot detect proximity sensor, sensor is NULL");
++            return;
++        }
++
++        if (!mProximityRegistered) {
++            mSensorManager.registerListener(mProximityListener, mProximitySensor,
++                    SensorManager.SENSOR_DELAY_NORMAL, mHandler);
++            mProximityRegistered = true;
++        }
++    }
++
++    private void stopListeningForProximity() {
++        if (DEBUG) {
++            Log.d(TAG, "startListeningForProximity()");
++        }
++
++        if (mProximityRegistered) {
++            mLastProximityState = mProximityState = PROXIMITY_UNKNOWN;
++            mSensorManager.unregisterListener(mProximityListener);
++            mProximityRegistered = false;
++        }
++    }
++
++    private void startListeningForLight() {
++        if (DEBUG) {
++            Log.d(TAG, "startListeningForLight()");
++        }
++
++        if (!PocketConstants.ENABLE_LIGHT_JUDGE) {
++            return;
++        }
++
++        if (mLightSensor == null) {
++            Log.d(TAG, "Cannot detect light sensor, sensor is NULL");
++            return;
++        }
++
++        if (!mLightRegistered) {
++            mSensorManager.registerListener(mLightListener, mLightSensor,
++                    SensorManager.SENSOR_DELAY_NORMAL, mHandler);
++            mLightRegistered = true;
++        }
++    }
++
++    private void stopListeningForLight() {
++        if (DEBUG) {
++            Log.d(TAG, "stopListeningForLight()");
++        }
++
++        if (mLightRegistered) {
++            mLightState = mLastLightState = LIGHT_UNKNOWN;
++            mSensorManager.unregisterListener(mLightListener);
++            mLightRegistered = false;
++        }
++    }
++
++    private void handleSystemReady() {
++        if (DEBUG) {
++            Log.d(TAG, "onBootPhase(): PHASE_SYSTEM_SERVICES_READY");
++        }
++        mSystemReady = true;
++        if (mPending) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_INTERACTIVE_CHANGED;
++            msg.arg1 = mInteractive ? 1 : 0;
++            mHandler.sendMessage(msg);
++            mPending = false;
++        }
++    }
++
++    private void handleSystemBooted() {
++        if (DEBUG) {
++            Log.d(TAG, "onBootPhase(): PHASE_BOOT_COMPLETED");
++        }
++        mSystemBooted = true;
++        if (mPending) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_INTERACTIVE_CHANGED;
++            msg.arg1 = mInteractive ? 1 : 0;
++            mHandler.sendMessage(msg);
++            mPending = false;
++        }
++    }
++
++    private void handleDispatchCallbacks() {
++        synchronized (mCallbacks) {
++            final int N = mCallbacks.size();
++            boolean cleanup = false;
++            for (int i = 0; i < N; i++) {
++                final IPocketCallback callback = mCallbacks.get(i);
++                try {
++                    if (callback != null) {
++                        callback.onStateChanged(isDeviceInPocket(), PocketManager.REASON_SENSOR);
++                    } else {
++                        cleanup = true;
++                    }
++                } catch (RemoteException e) {
++                    cleanup = true;
++                }
++            }
++            if (cleanup) {
++                cleanUpCallbacksLocked(null);
++            }
++        }
++    }
++
++    private void cleanUpCallbacksLocked(IPocketCallback callback) {
++        synchronized (mCallbacks) {
++            for (int i = mCallbacks.size() - 1; i >= 0; i--) {
++                IPocketCallback found = mCallbacks.get(i);
++                if (found == null || found == callback) {
++                    mCallbacks.remove(i);
++                }
++            }
++        }
++    }
++
++    private void handleSetListeningExternal(boolean listen) {
++        if (listen) {
++            // should prevent external processes to register while interactive,
++            // while they are allowed to stop listening in any case as for example
++            // coming pocket lock will need to.
++            if (!mInteractive) {
++                registerSensorListeners();
++            }
++        } else {
++            mHandler.removeCallbacksAndMessages(null);
++            unregisterSensorListeners();
++        }
++        dispatchCallbacks();
++    }
++
++    private void handleAddCallback(IPocketCallback callback) {
++        synchronized (mCallbacks) {
++            if (!mCallbacks.contains(callback)) {
++                mCallbacks.add(callback);
++            }
++        }
++    }
++
++    private void handleRemoveCallback(IPocketCallback callback) {
++        synchronized (mCallbacks) {
++            if (mCallbacks.contains(callback)) {
++                mCallbacks.remove(callback);
++            }
++        }
++    }
++
++    private void handleInteractiveChanged(boolean interactive) {
++        // always update interactive state.
++        mInteractive = interactive;
++
++        if (mPending) {
++            // working on it, waiting for proper system conditions.
++            return;
++        } else if (!mPending && (!mSystemBooted || !mSystemReady)) {
++            // we ain't ready, postpone till system is both booted AND ready.
++            mPending = true;
++            return;
++        }
++
++        update();
++    }
++
++    private void handleLightSensorEvent(SensorEvent sensorEvent) {
++        final boolean isDeviceInPocket = isDeviceInPocket();
++
++        mLastLightState = mLightState;
++
++        if (DEBUG) {
++            final String sensorEventToString = sensorEvent != null ? sensorEvent.toString() : "NULL";
++            Log.d(TAG, "LIGHT_SENSOR: onSensorChanged(), sensorEvent =" + sensorEventToString);
++        }
++
++        try {
++            if (sensorEvent == null) {
++                if (DEBUG) Log.d(TAG, "Event is null!");
++                mLightState = LIGHT_UNKNOWN;
++            } else if (sensorEvent.values == null || sensorEvent.values.length == 0) {
++                if (DEBUG) Log.d(TAG, "Event has no values! event.values null ? " + (sensorEvent.values == null));
++                mLightState = LIGHT_UNKNOWN;
++            } else {
++                final float value = sensorEvent.values[0];
++                final boolean isPoor = value >= 0
++                        && value <= POCKET_LIGHT_MAX_THRESHOLD;
++                if (DEBUG) {
++                    final long time = SystemClock.uptimeMillis();
++                    Log.d(TAG, "Event: time= " + time + ", value=" + value
++                            + ", maxRange=" + mLightMaxRange + ", isPoor=" + isPoor);
++                }
++                mLightState = isPoor ? LIGHT_POCKET : LIGHT_AMBIENT;
++            }
++        } catch (NullPointerException e) {
++            Log.e(TAG, "Event: something went wrong, exception caught, e = " + e);
++            mLightState = LIGHT_UNKNOWN;
++        } finally {
++            if (isDeviceInPocket != isDeviceInPocket()) {
++                dispatchCallbacks();
++            }
++        }
++    }
++
++    private void handleProximitySensorEvent(SensorEvent sensorEvent) {
++        final boolean isDeviceInPocket = isDeviceInPocket();
++
++        mLastProximityState = mProximityState;
++
++        if (DEBUG) {
++            final String sensorEventToString = sensorEvent != null ? sensorEvent.toString() : "NULL";
++            Log.d(TAG, "PROXIMITY_SENSOR: onSensorChanged(), sensorEvent =" + sensorEventToString);
++        }
++
++        try {
++            if (sensorEvent == null) {
++                if (DEBUG) Log.d(TAG, "Event is null!");
++                mProximityState = PROXIMITY_UNKNOWN;
++            } else if (sensorEvent.values == null || sensorEvent.values.length == 0) {
++                if (DEBUG) Log.d(TAG, "Event has no values! event.values null ? " + (sensorEvent.values == null));
++                mProximityState = PROXIMITY_UNKNOWN;
++            } else {
++                final float value = sensorEvent.values[0];
++                final boolean isPositive = sensorEvent.values[0] < mProximityMaxRange;
++                if (DEBUG) {
++                    final long time = SystemClock.uptimeMillis();
++                    Log.d(TAG, "Event: time=" + time + ", value=" + value
++                            + ", maxRange=" + mProximityMaxRange + ", isPositive=" + isPositive);
++                }
++                mProximityState = isPositive ? PROXIMITY_POSITIVE : PROXIMITY_NEGATIVE;
++            }
++        } catch (NullPointerException e) {
++            Log.e(TAG, "Event: something went wrong, exception caught, e = " + e);
++            mProximityState = PROXIMITY_UNKNOWN;
++        } finally {
++            if (isDeviceInPocket != isDeviceInPocket()) {
++                dispatchCallbacks();
++            }
++        }
++    }
++
++    private void handleUnregisterTimeout() {
++        mHandler.removeCallbacksAndMessages(null);
++        unregisterSensorListeners();
++    }
++
++    private void dispatchCallbacks() {
++        final boolean isDeviceInPocket = isDeviceInPocket();
++        if (mInteractive) {
++            if (!isDeviceInPocket) {
++                mHandler.sendEmptyMessageDelayed(PocketHandler.MSG_UNREGISTER_TIMEOUT, 5000 /* ms */);
++            } else {
++                mHandler.removeMessages(PocketHandler.MSG_UNREGISTER_TIMEOUT);
++            }
++        }
++        mHandler.removeMessages(PocketHandler.MSG_DISPATCH_CALLBACKS);
++        mHandler.sendEmptyMessage(PocketHandler.MSG_DISPATCH_CALLBACKS);
++    }
++
++    private void dumpInternal(PrintWriter pw) {
++        JSONObject dump = new JSONObject();
++        try {
++            dump.put("service", "POCKET");
++            dump.put("enabled", mEnabled);
++            dump.put("isDeviceInPocket", isDeviceInPocket());
++            dump.put("interactive", mInteractive);
++            dump.put("proximityState", mProximityState);
++            dump.put("lastProximityState", mLastProximityState);
++            dump.put("proximityRegistered", mProximityRegistered);
++            dump.put("proximityMaxRange", mProximityMaxRange);
++            dump.put("lightState", mLightState);
++            dump.put("lastLightState", mLastLightState);
++            dump.put("lightRegistered", mLightRegistered);
++            dump.put("lightMaxRange", mLightMaxRange);
++        } catch (JSONException e) {
++            Slog.e(TAG, "dump formatting failure", e);
++        } finally {
++            pw.println(dump);
++        }
++    }
++}
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 600b09f29afa..eb037119c9ba 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -163,6 +163,7 @@ import android.os.UserHandle;
+ import android.os.VibrationEffect;
+ import android.os.Vibrator;
+ import android.provider.DeviceConfig;
++import android.pocket.PocketManager;
+ import android.provider.MediaStore;
+ import android.provider.Settings;
+ import android.service.dreams.DreamManagerInternal;
+@@ -670,6 +671,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+ 
+     private VolumeKeyHandler mVolumeKeyHandler;
+ 
++    private PocketManager mPocketManager;
++
+     private static final int MSG_DISPATCH_MEDIA_KEY_WITH_WAKE_LOCK = 3;
+     private static final int MSG_DISPATCH_MEDIA_KEY_REPEAT_WITH_WAKE_LOCK = 4;
+     private static final int MSG_KEYGUARD_DRAWN_COMPLETE = 5;
+@@ -5123,6 +5126,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         if (mKeyguardDelegate != null) {
+             mKeyguardDelegate.onStartedGoingToSleep(pmSleepReason);
+         }
++        if (mPocketManager != null) {
++            mPocketManager.onInteractiveChanged(false);
++        }
+     }
+ 
+     // Called on the PowerManager's Notifier thread.
+@@ -5189,6 +5195,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+ 
+         mCameraGestureTriggered = false;
++
++        if (mPocketManager != null) {
++            mPocketManager.onInteractiveChanged(true);
++        }
+     }
+ 
+     // Called on the PowerManager's Notifier thread.
+@@ -5617,6 +5627,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         // So it is better not to bind keyguard here.
+         mKeyguardDelegate.onSystemReady();
+ 
++        mPocketManager = (PocketManager) mContext.getSystemService(Context.POCKET_SERVICE);
++
+         mVrManagerInternal = LocalServices.getService(VrManagerInternal.class);
+         if (mVrManagerInternal != null) {
+             mVrManagerInternal.addPersistentVrModeStateListener(mPersistentVrModeListener);
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index 09c896390c7f..57e1516f1574 100644
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -149,6 +149,7 @@ import com.android.server.os.DeviceIdentifiersPolicyService;
+ import com.android.server.os.NativeTombstoneManagerService;
+ import com.android.server.os.SchedulingPolicyService;
+ import com.android.server.people.PeopleService;
++import com.android.server.pocket.PocketService;
+ import com.android.server.pm.BackgroundDexOptService;
+ import com.android.server.pm.CrossProfileAppsService;
+ import com.android.server.pm.DataLoaderManagerService;
+@@ -460,6 +461,8 @@ public final class SystemServer implements Dumpable {
+     /** Start the IStats services. This is a blocking call and can take time. */
+     private static native void startIStatsService();
+ 
++    public boolean safeMode = false;
++
+     /**
+      * Start the memtrack proxy service.
+      */
+@@ -1589,7 +1592,9 @@ public final class SystemServer implements Dumpable {
+ 
+         // Before things start rolling, be sure we have decided whether
+         // we are in safe mode.
+-        final boolean safeMode = wm.detectSafeMode();
++        if(wm != null) {
++            safeMode = wm.detectSafeMode();
++        }
+         if (safeMode) {
+             // If yes, immediately turn on the global setting for airplane mode.
+             // Note that this does not send broadcasts at this stage because
+@@ -2430,6 +2435,10 @@ public final class SystemServer implements Dumpable {
+             mSystemServiceManager.startService(PeopleService.class);
+             t.traceEnd();
+ 
++            t.traceBegin("StartPocketService");
++            mSystemServiceManager.startService(PocketService.class);
++            t.traceEnd();
++
+             t.traceBegin("StartMediaMetricsManager");
+             mSystemServiceManager.startService(MediaMetricsManagerService.class);
+             t.traceEnd();
+-- 
+2.36.1
+
