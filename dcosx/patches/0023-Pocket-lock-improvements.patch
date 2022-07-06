@@ -1,0 +1,218 @@
+From 9bcccb5c0113b83aa2a1babd20c4a23ec955e836 Mon Sep 17 00:00:00 2001
+From: Henrique Silva <jhenrique09.mcz@hotmail.com>
+Date: Tue, 29 Oct 2019 17:40:41 +0100
+Subject: [PATCH 5/8] Pocket lock improvements
+
+* Fix auto hide not working correctly
+* Restore systemui visibility when hidden
+
+ZeNiXxX
+* remove faceunlock logic and adapt for android 10
+
+Change-Id: I61b38798d01775b252af88abb01dd2423b3a7638
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ core/java/android/pocket/IPocketService.aidl  |  4 +++
+ core/java/android/pocket/PocketManager.java   | 24 +++++++++++++
+ .../keyguard/KeyguardUpdateMonitor.java       |  4 +++
+ .../android/server/pocket/PocketService.java  | 36 +++++++++++++++++++
+ .../server/policy/PhoneWindowManager.java     | 12 ++++++-
+ .../server/policy/pocket/PocketLock.java      |  1 +
+ 6 files changed, 80 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/pocket/IPocketService.aidl b/core/java/android/pocket/IPocketService.aidl
+index 054820c8c089..500654c5c109 100644
+--- a/core/java/android/pocket/IPocketService.aidl
++++ b/core/java/android/pocket/IPocketService.aidl
+@@ -36,4 +36,8 @@ interface IPocketService {
+     // check if device is in pocket.
+     boolean isDeviceInPocket();
+ 
++    // Custom methods
++    void setPocketLockVisible(boolean visible);
++    boolean isPocketLockVisible();
++
+ }
+diff --git a/core/java/android/pocket/PocketManager.java b/core/java/android/pocket/PocketManager.java
+index 06567e1fb987..925f52a961ab 100644
+--- a/core/java/android/pocket/PocketManager.java
++++ b/core/java/android/pocket/PocketManager.java
+@@ -204,6 +204,30 @@ public class PocketManager {
+         }
+     }
+ 
++    /** Custom methods **/
++
++    public void setPocketLockVisible(boolean visible) {
++        if (!visible){
++            if (DEBUG) Log.v(TAG, "Clearing pocket timer");
++            mHandler.removeCallbacks(mPocketLockTimeout);
++            mPocketViewTimerActive = false;
++        }
++        if (mService != null) try {
++            mService.setPocketLockVisible(visible);
++        } catch (RemoteException e) {
++            Log.w(TAG, "Remote exception in setPocketLockVisible: ", e);
++        }
++    }
++
++    public boolean isPocketLockVisible() {
++        if (mService != null) try {
++            return mService.isPocketLockVisible();
++        } catch (RemoteException e) {
++            Log.w(TAG, "Remote exception in isPocketLockVisible: ", e);
++        }
++        return false;
++    }
++
+     private PocketLockTimeout mPocketLockTimeout = new PocketLockTimeout();
+ 
+ }
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index 56d5534dc222..ada128cb128d 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -404,6 +404,10 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         }
+     };
+ 
++    public boolean isPocketLockVisible(){
++        return mPocketManager.isPocketLockVisible();
++    }
++
+     private SparseBooleanArray mBiometricEnabledForUser = new SparseBooleanArray();
+     private BiometricManager mBiometricManager;
+     private IBiometricEnabledOnKeyguardCallback mBiometricEnabledCallback =
+diff --git a/services/core/java/com/android/server/pocket/PocketService.java b/services/core/java/com/android/server/pocket/PocketService.java
+index 5bd6c3f595db..9be31830e1bc 100644
+--- a/services/core/java/com/android/server/pocket/PocketService.java
++++ b/services/core/java/com/android/server/pocket/PocketService.java
+@@ -141,6 +141,9 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+     private boolean mLightRegistered;
+     private Sensor mLightSensor;
+ 
++    // Custom methods
++    private boolean mPocketLockVisible;
++
+     public PocketService(Context context) {
+         super(context);
+         mContext = context;
+@@ -205,6 +208,7 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+         public static final int MSG_SENSOR_EVENT_LIGHT = 7;
+         public static final int MSG_UNREGISTER_TIMEOUT = 8;
+         public static final int MSG_SET_LISTEN_EXTERNAL = 9;
++        public static final int MSG_SET_POCKET_LOCK_VISIBLE = 10;
+ 
+         public PocketHandler(Looper looper) {
+             super(looper);
+@@ -243,6 +247,9 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+                 case MSG_SET_LISTEN_EXTERNAL:
+                     handleSetListeningExternal(msg.arg1 != 0);
+                     break;
++                case MSG_SET_POCKET_LOCK_VISIBLE:
++                    handleSetPocketLockVisible(msg.arg1 != 0);
++                    break;
+                 default:
+                     Slog.w(TAG, "Unknown message:" + msg.what);
+             }
+@@ -338,6 +345,27 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+             }
+         }
+ 
++        @Override // Binder call
++        public void setPocketLockVisible(final boolean visible) {
++            final Message msg = new Message();
++            msg.what = PocketHandler.MSG_SET_POCKET_LOCK_VISIBLE;
++            msg.arg1 = visible ? 1 : 0;
++            mHandler.sendMessage(msg);
++        }
++
++        @Override // Binder call
++        public boolean isPocketLockVisible() {
++            final long ident = Binder.clearCallingIdentity();
++            try {
++                if (!mSystemReady || !mSystemBooted) {
++                    return false;
++                }
++                return PocketService.this.isPocketLockVisible();
++            } finally {
++                Binder.restoreCallingIdentity(ident);
++            }
++        }
++
+         @Override // Binder call
+         protected void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+             if (mContext.checkCallingOrSelfPermission(Manifest.permission.DUMP)
+@@ -551,6 +579,14 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+         }
+     }
+ 
++    private void handleSetPocketLockVisible(boolean visible) {
++        mPocketLockVisible = visible;
++    }
++
++    private boolean isPocketLockVisible() {
++        return mPocketLockVisible;
++    }
++
+     private void handleSetListeningExternal(boolean listen) {
+         if (listen) {
+             // should prevent external processes to register while interactive,
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index 0e611bfae0ac..c0bb137fdd6e 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -1554,7 +1554,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+ 
+         @Override
+         public void run() {
+-            mDefaultDisplayPolicy.takeScreenshot(mScreenshotType, mScreenshotSource);
++            if (!mPocketLockShowing) {
++                mDefaultDisplayPolicy.takeScreenshot(mScreenshotType, mScreenshotSource);
++            }
+         }
+     }
+ 
+@@ -5548,12 +5550,18 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             return;
+         }
+ 
++        if (mPowerManager.isInteractive() && !isKeyguardShowingAndNotOccluded()){
++            return;
++        }
++
+         if (DEBUG) {
+             Log.d(TAG, "showPocketLock, animate=" + animate);
+         }
+ 
+         mPocketLock.show(animate);
+         mPocketLockShowing = true;
++
++        mPocketManager.setPocketLockVisible(true);
+     }
+ 
+     /**
+@@ -5575,6 +5583,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+ 
+         mPocketLock.hide(animate);
+         mPocketLockShowing = false;
++
++        mPocketManager.setPocketLockVisible(false);
+     }
+ 
+ 
+diff --git a/services/core/java/com/android/server/policy/pocket/PocketLock.java b/services/core/java/com/android/server/policy/pocket/PocketLock.java
+index 95ba131c58b4..ce2501d52e47 100644
+--- a/services/core/java/com/android/server/policy/pocket/PocketLock.java
++++ b/services/core/java/com/android/server/policy/pocket/PocketLock.java
+@@ -159,6 +159,7 @@ public class PocketLock {
+ 
+     private void removeView() {
+         if (mWindowManager != null && mAttached) {
++            mView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+             mWindowManager.removeView(mView);
+             mAnimating = false;
+             mAttached = false;
+-- 
+2.36.1
+
