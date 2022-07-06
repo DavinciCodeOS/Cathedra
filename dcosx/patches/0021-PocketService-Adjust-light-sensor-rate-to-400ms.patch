@@ -1,0 +1,43 @@
+From fb88903a308bc8f8dec769fdea43aae6335a4b06 Mon Sep 17 00:00:00 2001
+From: Alex Naidis <alex.naidis@linux.com>
+Date: Mon, 14 Aug 2017 20:56:16 -0400
+Subject: [PATCH 3/8] PocketService: Adjust light sensor rate to 400ms
+
+We already adjusted the proximity sensor rate to
+400ms, so adjust the rate for the light sensor
+accordingly and create a tunable.
+
+Change-Id: Ie6dda80df8cdc677eb6cdb873a5ce1e888572fe7
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ .../core/java/com/android/server/pocket/PocketService.java | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/pocket/PocketService.java b/services/core/java/com/android/server/pocket/PocketService.java
+index 781747a21715..5bd6c3f595db 100644
+--- a/services/core/java/com/android/server/pocket/PocketService.java
++++ b/services/core/java/com/android/server/pocket/PocketService.java
+@@ -88,6 +88,11 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+      */
+     private static final int PROXIMITY_NEGATIVE = 2;
+ 
++    /**
++     * The rate light sensor events are delivered at.
++     */
++    private static final int LIGHT_SENSOR_DELAY = 400000;
++
+     /**
+      * Wheater we don't have yet a valid light sensor event or pocket service not running.
+      */
+@@ -468,7 +473,7 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+ 
+         if (!mLightRegistered) {
+             mSensorManager.registerListener(mLightListener, mLightSensor,
+-                    SensorManager.SENSOR_DELAY_NORMAL, mHandler);
++                    LIGHT_SENSOR_DELAY, mHandler);
+             mLightRegistered = true;
+         }
+     }
+-- 
+2.36.1
+
