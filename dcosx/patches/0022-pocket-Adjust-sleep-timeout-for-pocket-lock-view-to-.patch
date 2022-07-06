@@ -1,0 +1,111 @@
+From e60bf10b05c28498b5f25f6bea4b0a6407c86a28 Mon Sep 17 00:00:00 2001
+From: TheStrix <parthbhatia98@gmail.com>
+Date: Wed, 6 Mar 2019 14:40:06 +0530
+Subject: [PATCH 4/8] pocket: Adjust sleep timeout for pocket lock view to 10
+ secs
+
+ - Fix the case where user sets a high value for sleep timeout in display settings
+   and the pocket view is also displayed for that much duration.
+
+Change-Id: If6c4daa1fd98992141f22db70e0e86d5d990f789
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ core/java/android/pocket/PocketManager.java | 41 +++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+diff --git a/core/java/android/pocket/PocketManager.java b/core/java/android/pocket/PocketManager.java
+index 82481ad80c3c..06567e1fb987 100644
+--- a/core/java/android/pocket/PocketManager.java
++++ b/core/java/android/pocket/PocketManager.java
+@@ -16,7 +16,11 @@
+ package android.pocket;
+ 
+ import android.content.Context;
++import android.os.Handler;
++import android.os.PowerManager;
+ import android.os.RemoteException;
++import android.os.SystemClock;
++import android.text.format.DateUtils;
+ import android.util.Log;
+ import android.util.Slog;
+ 
+@@ -54,6 +58,7 @@ import android.util.Slog;
+ public class PocketManager {
+ 
+     private static final String TAG = PocketManager.class.getSimpleName();
++    static final boolean DEBUG = false;
+ 
+     /**
+      * Whether {@link IPocketCallback#onStateChanged(boolean, int)}
+@@ -79,6 +84,9 @@ public class PocketManager {
+ 
+     private Context mContext;
+     private IPocketService mService;
++    private PowerManager mPowerManager;
++    private Handler mHandler;
++    private boolean mPocketViewTimerActive;
+ 
+     public PocketManager(Context context, IPocketService service) {
+         mContext = context;
+@@ -86,6 +94,8 @@ public class PocketManager {
+         if (mService == null) {
+             Slog.v(TAG, "PocketService was null");
+         }
++        mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
++        mHandler = new Handler();
+     }
+ 
+     /**
+@@ -132,6 +142,21 @@ public class PocketManager {
+      * {@link PhoneWindowManager#startedGoingToSleep(int)}
+      */
+     public void onInteractiveChanged(boolean interactive) {
++        boolean isPocketViewShowing = (interactive && isDeviceInPocket());
++        synchronized (mPocketLockTimeout) {
++            if (mPocketViewTimerActive != isPocketViewShowing) {
++                if (isPocketViewShowing) {
++                    if (DEBUG) Log.v(TAG, "Setting pocket timer");
++                    mHandler.removeCallbacks(mPocketLockTimeout); // remove any pending requests
++                    mHandler.postDelayed(mPocketLockTimeout, 10 * DateUtils.SECOND_IN_MILLIS);
++                    mPocketViewTimerActive = true;
++                } else {
++                    if (DEBUG) Log.v(TAG, "Clearing pocket timer");
++                    mHandler.removeCallbacks(mPocketLockTimeout);
++                    mPocketViewTimerActive = false;
++                }
++            }
++        }
+         if (mService != null) try {
+             mService.onInteractiveChanged(interactive);
+         } catch (RemoteException e) {
+@@ -149,6 +174,12 @@ public class PocketManager {
+         } catch (RemoteException e) {
+             Log.w(TAG, "Remote exception in setListeningExternal: ", e);
+         }
++        // Clear timeout when user hides pocket lock with long press power.
++        if (mPocketViewTimerActive && !listen) {
++            if (DEBUG) Log.v(TAG, "Clearing pocket timer due to override");
++            mHandler.removeCallbacks(mPocketLockTimeout);
++            mPocketViewTimerActive = false;
++        }
+     }
+ 
+     /**
+@@ -165,4 +196,14 @@ public class PocketManager {
+         return false;
+     }
+ 
++    class PocketLockTimeout implements Runnable {
++        @Override
++        public void run() {
++            mPowerManager.goToSleep(SystemClock.uptimeMillis());
++            mPocketViewTimerActive = false;
++        }
++    }
++
++    private PocketLockTimeout mPocketLockTimeout = new PocketLockTimeout();
++
+ }
+-- 
+2.36.1
+
