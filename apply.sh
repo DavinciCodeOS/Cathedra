@@ -190,6 +190,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0022-pocket-Adjust-sleep-timeout-for-pocket-lock-view-to-.patch
 	echo "[i] Applying 0023-Pocket-lock-improvements.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0023-Pocket-lock-improvements.patch
+	echo "[i] Applying 0024-pocket-introduce-pocket-bridge.patch"
+	git am -3 $CATHEDRA_PATH/dcosx/patches/0024-pocket-introduce-pocket-bridge.patch
 	cd $BASE_BUILD_DIR
 
 	cd system/core
