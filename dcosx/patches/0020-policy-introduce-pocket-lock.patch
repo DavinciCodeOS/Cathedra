@@ -1,0 +1,641 @@
+From c887a9e5b70b45bc26e607a109d1b70dad492299 Mon Sep 17 00:00:00 2001
+From: Carlo Savignano <carlosavignano@aospa.co>
+Date: Tue, 29 Oct 2019 23:49:36 +0100
+Subject: [PATCH 2/8] policy: introduce pocket lock
+
+* Block touch screen and keys inputs when device is in pocket.
+* Safe-door to disable pocket lock within long press power button
+  if sensors do not behave correctly after PocketManager.isDeviceInPocket()
+  returns true.
+* Window uses TYPE_SYSTEM_ERROR flag with ensure high
+  priority over the lockscreen and other high priority windows.
+* Do not illuminate buttons when pocket lock is showing.
+* Disable fingerprint events and gestures when in pocket
+* Be friendly towards Keypress Boost
+
+Contributors:
+Carlo Savignano <carlosavignano@aospa.co>
+Chris Lahaye <dev@chrislahaye.com>
+Anas Karbila <anaskarbila@aospa.co>
+Alex Naidis <alex.naidis@linux.com>
+Park Ju Hyung <qkrwngud825@gmail.com>
+
+Ticket: NOUGAT-15
+
+ZeNiXxX
+* Fix  booting issues
+* Fix  NPEs
+* Bring to Android 10
+
+DennySPb: adapt for 11, 12
+
+Change-Id: I34108fa38f28f15b0b99c8ebb6551dcc4dabad14
+Signed-off-by: Pranav Vashi <neobuddy89@gmail.com>
+---
+ .../res/layout/pocket_lock_view_layout.xml    |  43 +++++
+ core/res/res/values/custom_strings.xml        |   2 +
+ core/res/res/values/custom_symbols.xml        |   5 +
+ .../keyguard/KeyguardUpdateMonitor.java       |  38 +++-
+ .../android/server/pocket/PocketService.java  |   7 +-
+ .../server/policy/PhoneWindowManager.java     | 121 +++++++++++-
+ .../server/policy/pocket/PocketLock.java      | 181 ++++++++++++++++++
+ 7 files changed, 393 insertions(+), 4 deletions(-)
+ create mode 100644 core/res/res/layout/pocket_lock_view_layout.xml
+ create mode 100644 services/core/java/com/android/server/policy/pocket/PocketLock.java
+
+diff --git a/core/res/res/layout/pocket_lock_view_layout.xml b/core/res/res/layout/pocket_lock_view_layout.xml
+new file mode 100644
+index 000000000000..75893cb5efb0
+--- /dev/null
++++ b/core/res/res/layout/pocket_lock_view_layout.xml
+@@ -0,0 +1,43 @@
++<LinearLayout
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:layout_gravity="center"
++    android:gravity="center"
++    android:background="@android:color/black">
++
++    <LinearLayout
++        android:id="@+id/pocket_hint_container"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center"
++        android:gravity="center"
++        android:orientation="vertical">
++
++        <ImageView
++            android:id="@+id/pocket_hint_image"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center_horizontal"
++            android:gravity="center_horizontal"
++            android:padding="10dp"
++            android:src="@android:drawable/ic_lock_lock"
++            android:tint="@android:color/white"
++            android:alpha="1.0"/>
++
++        <TextView
++            android:id="@+id/pocket_hint_message"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center_horizontal"
++            android:gravity="center_horizontal"
++            android:padding="10dp"
++            android:text="@android:string/pocket_lock_message_long_press"
++            android:textColor="@android:color/white"
++            android:alpha="0.7"/>
++
++    </LinearLayout>
++
++
++</LinearLayout>
++
+diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
+index ae4dd0282394..7f682865e596 100644
+--- a/core/res/res/values/custom_strings.xml
++++ b/core/res/res/values/custom_strings.xml
+@@ -3,4 +3,6 @@
+     <string name="face_unlock_disabled_idle">Face unlock disabled due to inactivity</string>
+     <!-- App lock -->
+     <string name="unlock_application">Unlock <xliff:g id="label" example="Telegram">%1$s</xliff:g></string>
++    <!-- Pocket Lock -->
++    <string name="pocket_lock_message_long_press">Press and hold power button to unlock</string>
+ </resources>
+diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
+index 2c3597ae4c92..bf255bf839d8 100644
+--- a/core/res/res/values/custom_symbols.xml
++++ b/core/res/res/values/custom_symbols.xml
+@@ -108,4 +108,9 @@
+     <java-symbol type="string" name="unlock_application" />
+     <java-symbol type="array" name="config_appLockAllowedSystemApps" />
+ 
++   <!-- Pocket Lock -->
++   <java-symbol type="layout" name="pocket_lock_view_layout" />
++   <java-symbol type="id" name="pocket_hint_container" />
++   <java-symbol type="id" name="pocket_hint_image" />
++   <java-symbol type="id" name="pocket_hint_message" />
+ </resources>
+diff --git a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+index f2a159bacd01..56d5534dc222 100644
+--- a/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
++++ b/packages/SystemUI/src/com/android/keyguard/KeyguardUpdateMonitor.java
+@@ -73,6 +73,8 @@ import android.os.ServiceManager;
+ import android.os.Trace;
+ import android.os.UserHandle;
+ import android.os.UserManager;
++import android.pocket.IPocketCallback;
++import android.pocket.PocketManager;
+ import android.provider.Settings;
+ import android.service.dreams.DreamService;
+ import android.service.dreams.IDreamManager;
+@@ -192,6 +194,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+     private static final int MSG_TIME_FORMAT_UPDATE = 344;
+     private static final int MSG_REQUIRE_NFC_UNLOCK = 345;
+ 
++    // Additional messages should be 600+
++    private static final int MSG_POCKET_STATE_CHANGED = 600;
++
+     /** Biometric authentication state: Not listening. */
+     private static final int BIOMETRIC_STATE_STOPPED = 0;
+ 
+@@ -378,6 +383,27 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         }
+     };
+ 
++    private PocketManager mPocketManager;
++    private boolean mIsDeviceInPocket;
++    private final IPocketCallback mPocketCallback = new IPocketCallback.Stub() {
++        @Override
++        public void onStateChanged(boolean isDeviceInPocket, int reason) {
++            boolean changed = false;
++            if (reason == PocketManager.REASON_SENSOR) {
++                if (isDeviceInPocket != mIsDeviceInPocket) {
++                    mIsDeviceInPocket = isDeviceInPocket;
++                    changed = true;
++                }
++            } else {
++                changed = isDeviceInPocket != mIsDeviceInPocket;
++                mIsDeviceInPocket = false;
++            }
++            if (changed) {
++                mHandler.sendEmptyMessage(MSG_POCKET_STATE_CHANGED);
++            }
++        }
++    };
++
+     private SparseBooleanArray mBiometricEnabledForUser = new SparseBooleanArray();
+     private BiometricManager mBiometricManager;
+     private IBiometricEnabledOnKeyguardCallback mBiometricEnabledCallback =
+@@ -1976,6 +2002,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+                     case MSG_REQUIRE_NFC_UNLOCK:
+                         handleRequireUnlockForNfc();
+                         break;
++                    case MSG_POCKET_STATE_CHANGED:
++                        updateBiometricListeningState(BIOMETRIC_ACTION_UPDATE);
++                        break;
+                     default:
+                         super.handleMessage(msg);
+                         break;
+@@ -2056,6 +2085,11 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         mDreamManager = IDreamManager.Stub.asInterface(
+                 ServiceManager.getService(DreamService.DREAM_SERVICE));
+ 
++        mPocketManager = (PocketManager) context.getSystemService(Context.POCKET_SERVICE);
++        if (mPocketManager != null) {
++            mPocketManager.addCallback(mPocketCallback);
++        }
++
+         if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)) {
+             mFpm = (FingerprintManager) context.getSystemService(Context.FINGERPRINT_SERVICE);
+         }
+@@ -2304,7 +2338,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+         BiometricAuthenticated fingerprint = mUserFingerprintAuthenticated.get(getCurrentUser());
+         return mAssistantVisible && mKeyguardOccluded
+                 && !(fingerprint != null && fingerprint.mAuthenticated)
+-                && !mUserHasTrust.get(getCurrentUser(), false);
++                && !mUserHasTrust.get(getCurrentUser(), false) && !mIsDeviceInPocket;
+     }
+ 
+     private boolean shouldListenForFaceAssistant() {
+@@ -2364,7 +2398,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
+                     && !mFingerprintLockedOut);
+ 
+         final boolean shouldListen = shouldListenKeyguardState && shouldListenUserState
+-                && shouldListenBouncerState && shouldListenUdfpsState;
++                && shouldListenBouncerState && shouldListenUdfpsState && !mIsDeviceInPocket;
+ 
+         if (DEBUG_FINGERPRINT || DEBUG_SPEW) {
+             maybeLogListenerModelData(
+diff --git a/services/core/java/com/android/server/pocket/PocketService.java b/services/core/java/com/android/server/pocket/PocketService.java
+index 9f6ec401519a..781747a21715 100644
+--- a/services/core/java/com/android/server/pocket/PocketService.java
++++ b/services/core/java/com/android/server/pocket/PocketService.java
+@@ -66,6 +66,11 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+     private static final String TAG = PocketService.class.getSimpleName();
+     private static final boolean DEBUG = PocketConstants.DEBUG;
+ 
++    /**
++     * The rate proximity sensor events are delivered at.
++     */
++    private static final int PROXIMITY_SENSOR_DELAY = 400000;
++
+     /**
+      * Wheater we don't have yet a valid proximity sensor event or pocket service not running.
+      */
+@@ -430,7 +435,7 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
+ 
+         if (!mProximityRegistered) {
+             mSensorManager.registerListener(mProximityListener, mProximitySensor,
+-                    SensorManager.SENSOR_DELAY_NORMAL, mHandler);
++                    PROXIMITY_SENSOR_DELAY, mHandler);
+             mProximityRegistered = true;
+         }
+     }
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index eb037119c9ba..0e611bfae0ac 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -163,6 +163,7 @@ import android.os.UserHandle;
+ import android.os.VibrationEffect;
+ import android.os.Vibrator;
+ import android.provider.DeviceConfig;
++import android.pocket.IPocketCallback;
+ import android.pocket.PocketManager;
+ import android.provider.MediaStore;
+ import android.provider.Settings;
+@@ -224,6 +225,7 @@ import com.android.server.policy.KeyCombinationManager.TwoKeysCombinationRule;
+ import com.android.server.policy.keyguard.KeyguardServiceDelegate;
+ import com.android.server.policy.keyguard.KeyguardServiceDelegate.DrawnListener;
+ import com.android.server.policy.keyguard.KeyguardStateMonitor.StateCallback;
++import com.android.server.policy.pocket.PocketLock;
+ import com.android.server.statusbar.StatusBarManagerInternal;
+ import com.android.server.vr.VrManagerInternal;
+ import com.android.server.wm.ActivityTaskManagerInternal;
+@@ -260,6 +262,7 @@ import com.android.internal.custom.hardware.LineageHardwareManager;
+ public class PhoneWindowManager implements WindowManagerPolicy {
+     static final String TAG = "WindowManager";
+     static final boolean localLOGV = false;
++    static final boolean DEBUG = false;
+     static final boolean DEBUG_INPUT = false;
+     static final boolean DEBUG_KEYGUARD = false;
+     static final boolean DEBUG_SPLASH_SCREEN = false;
+@@ -289,6 +292,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     static final int LONG_PRESS_POWER_GO_TO_VOICE_ASSIST = 4;
+     static final int LONG_PRESS_POWER_ASSISTANT = 5; // Settings.Secure.ASSISTANT
+     static final int LONG_PRESS_POWER_TORCH = 6;
++    static final int LONG_PRESS_POWER_HIDE_POCKET_LOCK = 7;
+ 
+     // must match: config_veryLongPresOnPowerBehavior in config.xml
+     static final int VERY_LONG_PRESS_POWER_NOTHING = 0;
+@@ -672,6 +676,28 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     private VolumeKeyHandler mVolumeKeyHandler;
+ 
+     private PocketManager mPocketManager;
++    private PocketLock mPocketLock;
++    private boolean mPocketLockShowing;
++    private boolean mIsDeviceInPocket;
++    private final IPocketCallback mPocketCallback = new IPocketCallback.Stub() {
++
++        @Override
++        public void onStateChanged(boolean isDeviceInPocket, int reason) {
++            boolean wasDeviceInPocket = mIsDeviceInPocket;
++            if (reason == PocketManager.REASON_SENSOR) {
++                mIsDeviceInPocket = isDeviceInPocket;
++            } else {
++                mIsDeviceInPocket = false;
++            }
++            if (wasDeviceInPocket != mIsDeviceInPocket) {
++                handleDevicePocketStateChanged();
++                //if (mKeyHandler != null) {
++                    //mKeyHandler.setIsInPocket(mIsDeviceInPocket);
++                //}
++            }
++        }
++
++    };
+ 
+     private static final int MSG_DISPATCH_MEDIA_KEY_WITH_WAKE_LOCK = 3;
+     private static final int MSG_DISPATCH_MEDIA_KEY_REPEAT_WITH_WAKE_LOCK = 4;
+@@ -1040,6 +1066,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             mPowerKeyWakeLock.acquire();
+         }
+ 
++        // Still allow muting call with power button press.
++        boolean blockInputs = mIsDeviceInPocket && (!interactive || mPocketLockShowing);
++
+         mWindowManagerFuncs.onPowerKeyDown(interactive);
+ 
+         // Stop ringing or end call if configured to do so when power is pressed.
+@@ -1050,7 +1079,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                 // Pressing Power while there's a ringing incoming
+                 // call should silence the ringer.
+                 telecomManager.silenceRinger();
+-            } else if ((mIncallPowerBehavior
++            } else if (!blockInputs && (mIncallPowerBehavior
+                     & Settings.Secure.INCALL_POWER_BUTTON_BEHAVIOR_HANGUP) != 0
+                     && telecomManager.isInCall() && interactive) {
+                 // Otherwise, if "Power button ends call" is enabled,
+@@ -1064,6 +1093,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         // Inform the StatusBar; but do not allow it to consume the event.
+         sendSystemKeyToStatusBarAsync(event.getKeyCode());
+ 
++        // Abort possibly stuck animations.
++        mHandler.post(mWindowManagerFuncs::triggerAnimationFailsafe);
++
+         // If the power key has still not yet been handled, then detect short
+         // press, long press, or multi press and decide what to do.
+         mPowerKeyHandled = mPowerKeyHandled || hungUp
+@@ -1331,6 +1363,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                 msg.setAsynchronous(true);
+                 msg.sendToTarget();
+                 break;
++            case LONG_PRESS_POWER_HIDE_POCKET_LOCK:
++                mPowerKeyHandled = true;
++                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS, false, "Power - Long-Press - Hide Pocket Lock");
++                hidePocketLock(true);
++                mPocketManager.setListeningExternal(false);
++                break;
+         }
+     }
+ 
+@@ -1400,6 +1438,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         if (FactoryTest.isLongPressOnPowerOffEnabled()) {
+             return LONG_PRESS_POWER_SHUT_OFF_NO_CONFIRM;
+         }
++        if (mPocketLockShowing) {
++            return LONG_PRESS_POWER_HIDE_POCKET_LOCK;
++        }
+         if (mTorchLongPressPowerEnabled && (!isScreenOn() || isDozeMode() || mTorchEnabled)) {
+             return LONG_PRESS_POWER_TORCH;
+         }
+@@ -4138,6 +4179,23 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     + " policyFlags=" + Integer.toHexString(policyFlags));
+         }
+ 
++        // Pre-basic policy based on interactive and pocket lock state.
++        if (mIsDeviceInPocket && (!interactive || mPocketLockShowing)) {
++            if (keyCode != KeyEvent.KEYCODE_POWER &&
++                keyCode != KeyEvent.KEYCODE_VOLUME_UP &&
++                keyCode != KeyEvent.KEYCODE_VOLUME_DOWN &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_PLAY &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_PAUSE &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE &&
++                keyCode != KeyEvent.KEYCODE_HEADSETHOOK &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_STOP &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_NEXT &&
++                keyCode != KeyEvent.KEYCODE_MEDIA_PREVIOUS &&
++                keyCode != KeyEvent.KEYCODE_VOLUME_MUTE) {
++                return 0;
++            }
++        }
++
+         if (!fromNavbar && !virtualKey && shouldDisableKey(keyCode)){
+             return 0;
+         }
+@@ -5461,6 +5519,65 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+     }
+ 
++    /**
++     * Perform operations if needed on pocket mode state changed.
++     * @see com.android.server.pocket.PocketService
++     * @see PocketLock
++     * @see this.mPocketCallback;
++     * @author Carlo Savignano
++     */
++    private void handleDevicePocketStateChanged() {
++        final boolean interactive = mPowerManager.isInteractive();
++        if (mIsDeviceInPocket) {
++            showPocketLock(interactive);
++        } else {
++            hidePocketLock(interactive);
++        }
++    }
++
++    /**
++     * Check if we can show pocket lock once requested.
++     * @see com.android.server.pocket.PocketService
++     * @see PocketLock
++     * @see this.mPocketCallback;
++     * @author Carlo Savignano
++     */
++    private void showPocketLock(boolean animate) {
++        if (!mSystemReady || !mSystemBooted || !mKeyguardDrawnOnce
++                || mPocketLock == null || mPocketLockShowing) {
++            return;
++        }
++
++        if (DEBUG) {
++            Log.d(TAG, "showPocketLock, animate=" + animate);
++        }
++
++        mPocketLock.show(animate);
++        mPocketLockShowing = true;
++    }
++
++    /**
++     * Check if we can hide pocket lock once requested.
++     * @see com.android.server.pocket.PocketService
++     * @see PocketLock
++     * @see this.mPocketCallback;
++     * @author Carlo Savignano
++     */
++    private void hidePocketLock(boolean animate) {
++        if (!mSystemReady || !mSystemBooted || !mKeyguardDrawnOnce
++                || mPocketLock == null || !mPocketLockShowing) {
++            return;
++        }
++
++        if (DEBUG) {
++            Log.d(TAG, "hidePocketLock, animate=" + animate);
++        }
++
++        mPocketLock.hide(animate);
++        mPocketLockShowing = false;
++    }
++
++
+     private void handleHideBootMessage() {
+         synchronized (mLock) {
+             if (!mKeyguardDrawnOnce) {
+@@ -5628,6 +5745,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         mKeyguardDelegate.onSystemReady();
+ 
+         mPocketManager = (PocketManager) mContext.getSystemService(Context.POCKET_SERVICE);
++        mPocketManager.addCallback(mPocketCallback);
++        mPocketLock = new PocketLock(mContext);
+ 
+         mVrManagerInternal = LocalServices.getService(VrManagerInternal.class);
+         if (mVrManagerInternal != null) {
+diff --git a/services/core/java/com/android/server/policy/pocket/PocketLock.java b/services/core/java/com/android/server/policy/pocket/PocketLock.java
+new file mode 100644
+index 000000000000..95ba131c58b4
+--- /dev/null
++++ b/services/core/java/com/android/server/policy/pocket/PocketLock.java
+@@ -0,0 +1,181 @@
++/*
++ * Copyright (C) 2016 The ParanoidAndroid Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.server.policy.pocket;
++
++import android.animation.Animator;
++import android.content.Context;
++import android.graphics.PixelFormat;
++import android.os.Handler;
++import android.view.Gravity;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.WindowManager;
++
++/**
++ * This class provides a fullscreen overlays view, displaying itself
++ * even on top of lock screen. While this view is displaying touch
++ * inputs are not passed to the the views below.
++ * @see android.view.WindowManager.LayoutParams.TYPE_SYSTEM_ERROR;
++ * @author Carlo Savignano
++ */
++public class PocketLock {
++
++    private final Context mContext;
++    private WindowManager mWindowManager;
++    private WindowManager.LayoutParams mLayoutParams;
++    private Handler mHandler;
++    private View mView;
++    private View mHintContainer;
++
++    private boolean mAttached;
++    private boolean mAnimating;
++
++    /**
++     * Creates pocket lock objects, inflate view and set layout parameters.
++     * @param context
++     */
++    public PocketLock(Context context) {
++        mContext = context;
++        mHandler = new Handler();
++        mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
++        mLayoutParams = getLayoutParams();
++        mView = LayoutInflater.from(mContext).inflate(
++                com.android.internal.R.layout.pocket_lock_view_layout, null);
++        mView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
++            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
++            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
++    }
++
++    public void show(final boolean animate) {
++        final Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                if (mAttached) {
++                    return;
++                }
++
++                if (mAnimating) {
++                    mView.animate().cancel();
++                }
++
++                if (animate) {
++                    mView.animate().alpha(1.0f).setListener(new Animator.AnimatorListener() {
++                        @Override
++                        public void onAnimationStart(Animator animator) {
++                            mAnimating = true;
++                        }
++
++                        @Override
++                        public void onAnimationEnd(Animator animator) {
++                            mAnimating = false;
++                        }
++
++                        @Override
++                        public void onAnimationCancel(Animator animator) {
++                        }
++
++                        @Override
++                        public void onAnimationRepeat(Animator animator) {
++                        }
++                    }).withStartAction(new Runnable() {
++                        @Override
++                        public void run() {
++                            mView.setAlpha(0.0f);
++                            addView();
++                        }
++                    }).start();
++                } else {
++                    mView.setAlpha(1.0f);
++                    addView();
++                }
++            }
++        };
++
++        mHandler.post(r);
++    }
++
++    public void hide(final boolean animate) {
++        final Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                if (!mAttached) {
++                    return;
++                }
++
++                if (mAnimating) {
++                    mView.animate().cancel();
++                }
++
++                if (animate) {
++                    mView.animate().alpha(0.0f).setListener(new Animator.AnimatorListener() {
++                        @Override
++                        public void onAnimationStart(Animator animator) {
++                            mAnimating = true;
++                        }
++
++                        @Override
++                        public void onAnimationEnd(Animator animator) {
++                            mAnimating = false;
++                            removeView();
++                        }
++
++                        @Override
++                        public void onAnimationCancel(Animator animator) {
++                        }
++
++                        @Override
++                        public void onAnimationRepeat(Animator animator) {
++                        }
++                    }).start();
++                } else {
++                    removeView();
++                    mView.setAlpha(0.0f);
++                }
++            }
++        };
++
++        mHandler.post(r);
++    }
++
++    private void addView() {
++        if (mWindowManager != null && !mAttached) {
++            mWindowManager.addView(mView, mLayoutParams);
++            mAttached = true;
++        }
++    }
++
++    private void removeView() {
++        if (mWindowManager != null && mAttached) {
++            mWindowManager.removeView(mView);
++            mAnimating = false;
++            mAttached = false;
++        }
++    }
++
++    private WindowManager.LayoutParams getLayoutParams() {
++        mLayoutParams = new WindowManager.LayoutParams();
++        mLayoutParams.format = PixelFormat.TRANSLUCENT;
++        mLayoutParams.height = WindowManager.LayoutParams.MATCH_PARENT;
++        mLayoutParams.width = WindowManager.LayoutParams.MATCH_PARENT;
++        mLayoutParams.gravity = Gravity.CENTER;
++        mLayoutParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR;
++        mLayoutParams.flags = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
++                | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
++                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
++        return mLayoutParams;
++    }
++
++}
+-- 
+2.36.1
+
