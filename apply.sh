@@ -196,6 +196,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0025-Pocket-lock-Add-config_pocketModeSupported-overlay.patch
 	echo "[i] Applying 0026-PocketLock-Make-using-light-sensor-optional.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0026-PocketLock-Make-using-light-sensor-optional.patch
+	echo "[i] Applying 0028-SystemUI-Introduce-Data-Switch-QS-Tile.patch"
+	git am -3 $CATHEDRA_PATH/dcosx/patches/0028-SystemUI-Introduce-Data-Switch-QS-Tile.patch
 	cd $BASE_BUILD_DIR
 
 	cd system/core
