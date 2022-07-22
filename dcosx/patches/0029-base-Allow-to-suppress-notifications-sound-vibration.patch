@@ -1,0 +1,87 @@
+From 83d73c1d918ab595aa7315bbc0461ddb3f7d79fc Mon Sep 17 00:00:00 2001
+From: ezio84 <brabus84@gmail.com>
+Date: Thu, 4 Jan 2018 10:26:17 +0100
+Subject: [PATCH] base: Allow to suppress notifications sound/vibration if
+ screen is ON [1/2]
+
+Change-Id: I279b202682939d797d3116089f50d65e3dd3eb01
+---
+ core/java/android/provider/Settings.java           |  8 ++++++++
+ .../notification/NotificationManagerService.java   | 14 +++++++++++++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index 739985702901..a344744c8868 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -5253,6 +5253,14 @@ public final class Settings {
+         public static final String BUTTON_BACKLIGHT_ONLY_WHEN_PRESSED =
+                 "button_backlight_only_when_pressed";
+ 
++        /**
++         * Whether to play notification sound and vibration if screen is ON
++         * 0 - never
++         * 1 - always
++         * @hide
++         */
++        public static final String NOTIFICATION_SOUND_VIB_SCREEN_ON = "notification_sound_vib_screen_on";
++
+         /**
+          * Force show navigation bar setting.
+          * @hide
+diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
+index a7fb77b5f5b3..08ce4790f806 100755
+--- a/services/core/java/com/android/server/notification/NotificationManagerService.java
++++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
+@@ -524,6 +524,8 @@ public class NotificationManagerService extends SystemService {
+     protected boolean mInCallStateOffHook = false;
+     boolean mNotificationPulseEnabled;
+ 
++    private boolean mSoundVibScreenOn;
++
+     private Uri mInCallNotificationUri;
+     private AudioAttributes mInCallNotificationAudioAttributes;
+     private float mInCallNotificationVolume;
+@@ -1819,6 +1821,8 @@ public class NotificationManagerService extends SystemService {
+                         Settings.Secure.LOCK_SCREEN_ALLOW_PRIVATE_NOTIFICATIONS);
+         private final Uri LOCK_SCREEN_SHOW_NOTIFICATIONS
+                 = Settings.Secure.getUriFor(Settings.Secure.LOCK_SCREEN_SHOW_NOTIFICATIONS);
++        private final Uri NOTIFICATION_SOUND_VIB_SCREEN_ON
++                = Settings.System.getUriFor(Settings.System.NOTIFICATION_SOUND_VIB_SCREEN_ON);
+ 
+         SettingsObserver(Handler handler) {
+             super(handler);
+@@ -1843,6 +1847,8 @@ public class NotificationManagerService extends SystemService {
+                     false, this, UserHandle.USER_ALL);
+             resolver.registerContentObserver(LOCK_SCREEN_SHOW_NOTIFICATIONS,
+                     false, this, UserHandle.USER_ALL);
++            resolver.registerContentObserver(NOTIFICATION_SOUND_VIB_SCREEN_ON,
++                    false, this, UserHandle.USER_ALL);
+             update(null);
+         }
+ 
+@@ -1890,6 +1896,11 @@ public class NotificationManagerService extends SystemService {
+             if (uri == null || LOCK_SCREEN_SHOW_NOTIFICATIONS.equals(uri)) {
+                 mPreferencesHelper.updateLockScreenShowNotifications();
+             }
++            if (uri == null || NOTIFICATION_SOUND_VIB_SCREEN_ON.equals(uri)) {
++                mSoundVibScreenOn = Settings.System.getIntForUser(resolver,
++                        Settings.System.NOTIFICATION_SOUND_VIB_SCREEN_ON, 1,
++                        UserHandle.USER_CURRENT) == 1;
++            }
+         }
+     }
+ 
+@@ -7396,7 +7407,8 @@ public class NotificationManagerService extends SystemService {
+         }
+ 
+         if (aboveThreshold && isNotificationForCurrentUser(record)) {
+-            if (mSystemReady && mAudioManager != null) {
++            boolean skipSound = mScreenOn && !mSoundVibScreenOn;
++            if (mSystemReady && mAudioManager != null && !skipSound) {
+                 Uri soundUri = record.getSound();
+                 hasValidSound = soundUri != null && !Uri.EMPTY.equals(soundUri);
+                 VibrationEffect vibration = record.getVibration();
+-- 
+2.36.1
+

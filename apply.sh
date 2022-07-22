@@ -198,6 +198,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0026-PocketLock-Make-using-light-sensor-optional.patch
 	echo "[i] Applying 0028-SystemUI-Introduce-Data-Switch-QS-Tile.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0028-SystemUI-Introduce-Data-Switch-QS-Tile.patch
+	echo "[i] Applying 0029-base-Allow-to-suppress-notifications-sound-vibration.patch"
+	git am -3 $CATHEDRA_PATH/dcosx/patches/0029-base-Allow-to-suppress-notifications-sound-vibration.patch
 	cd $BASE_BUILD_DIR
 
 	cd system/core
@@ -219,6 +221,8 @@ if [ "$PATCH_TYPE" = "dcosx" ] ; then
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0017-Settings-introduce-app-lock-3-4.patch
 	echo "[i] Applying 0027-Settings-Add-pocket-lock-toggle.patch"
 	git am -3 $CATHEDRA_PATH/dcosx/patches/0027-Settings-Add-pocket-lock-toggle.patch
+	echo "[i] Applying 0030-Settings-Allow-to-suppress-notifications-sound-vibra.patch"
+	git am -3 $CATHEDRA_PATH/doscx/patches/0030-Settings-Allow-to-suppress-notifications-sound-vibra.patch
 	cd $BASE_BUILD_DIR
 
 	cd device/custom/sepolicy
