@@ -28,5 +28,5 @@
    <project path="packages/overlays/ThemedIcons" name="davincicodeos/packages_overlays_ThemedIcons" remote="dcos-gitlab" revision="12.1" />
 
    <!-- More recent Rust -->
-   <project path="prebuilts/rust" name="platform/prebuilts/rust" remote="aosp" clone-depth="1" revision="refs/tags/rustc-1.61.0" />
+   <project path="prebuilts/rust" name="platform/prebuilts/rust" remote="aosp" clone-depth="1" revision="master" />
 </manifest>

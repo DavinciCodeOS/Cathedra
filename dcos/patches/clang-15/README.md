@@ -4,7 +4,7 @@ prebuilts/clang/host/linux-x86:
 
 build/soong:
 
-0001-soong-Clang-14-15-Rust-1.60-backports.patch
+0001-soong-Clang-14-15-Rust-1.62-backports.patch
 
 build/make:
 
@@ -70,4 +70,4 @@ system/bt:
 
 system/security:
 
-0001-Fix-warnings-in-preparation-for-Rust-1.54.0.patch
+0001-Fix-warnings-in-preparation-for-Rust-1.62.0.patch

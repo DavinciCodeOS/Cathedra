@@ -64,8 +64,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	cd build/soong
 	echo "[i] Applying 0006-soong-clang-builds-with-O3.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0006-soong-clang-builds-with-O3.patch
-	echo "[i] Applying 0001-soong-Clang-14-15-Rust-1.61-backports.patch"
-	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-soong-Clang-14-15-Rust-1.61-backports.patch
+	echo "[i] Applying 0001-soong-Clang-14-15-Rust-1.62-backports.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-soong-Clang-14-15-Rust-1.62-backports.patch
 	cd $BASE_BUILD_DIR
 
 	cd bionic
@@ -156,8 +156,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	cd $BASE_BUILD_DIR
 
 	cd system/security
-	echo "[i] Applying 0001-Fix-warnings-in-preparation-for-Rust-1.54.0.patch"
-	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-Fix-warnings-in-preparation-for-Rust-1.54.0.patch
+	echo "[i] Applying 0001-Fix-warnings-in-preparation-for-Rust-1.62.0.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-Fix-warnings-in-preparation-for-Rust-1.62.0.patch
 	cd $BASE_BUILD_DIR
 
 	echo "[i] Installing boot animation..."

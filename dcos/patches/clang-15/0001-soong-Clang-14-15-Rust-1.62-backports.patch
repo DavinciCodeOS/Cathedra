@@ -1,7 +1,7 @@
-From ba30e8f8d5d41f0b99d664a13c613ae3f295746d Mon Sep 17 00:00:00 2001
+From eb6e05e7a609a9c6985bdec326a625e712cca167 Mon Sep 17 00:00:00 2001
 From: Jens Reidel <adrian@travitia.xyz>
 Date: Sun, 5 Jun 2022 15:53:01 +0300
-Subject: [PATCH] soong: Clang 14/15, Rust 1.61 backports
+Subject: [PATCH] soong: Clang 14/15, Rust 1.62 backports
 
 Change-Id: I991a34020a15ac1eaad1f8da800b82bbc20d6668
 ---
@@ -380,7 +380,7 @@ index 95d84777b..8098271b3 100644
  }
  
 diff --git a/cc/tidy.go b/cc/tidy.go
-index 616cf8ab4..0db260508 100644
+index 16dde3f47..349a6a1e7 100644
 --- a/cc/tidy.go
 +++ b/cc/tidy.go
 @@ -153,6 +153,15 @@ func (tidy *tidyFeature) flags(ctx ModuleContext, flags Flags) Flags {
@@ -428,7 +428,7 @@ index 1598ebf9a..322cd3bea 100644
  			deps.Stdlibs = append(deps.Stdlibs, stdlib)
  		}
 diff --git a/rust/config/global.go b/rust/config/global.go
-index 1b56237b3..6ca5c9a19 100644
+index 1b56237b3..6e2e516ea 100644
 --- a/rust/config/global.go
 +++ b/rust/config/global.go
 @@ -24,7 +24,7 @@ import (
@@ -436,7 +436,7 @@ index 1b56237b3..6ca5c9a19 100644
  
  var (
 -	RustDefaultVersion = "1.51.0"
-+	RustDefaultVersion = "1.61.0"
++	RustDefaultVersion = "1.62.0"
  	RustDefaultBase    = "prebuilts/rust/"
  	DefaultEdition     = "2018"
  	Stdlibs            = []string{
