@@ -88,6 +88,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	cd build/make
 	echo "[i] Applying 0001-make-Change-llvm-ar-format-to-be-format.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-make-Change-llvm-ar-format-to-be-format.patch
+	echo "[i] Applying 0015-releasetools-Use-bsdiff-for-recovery-patch-by-defaul.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/0015-releasetools-Use-bsdiff-for-recovery-patch-by-defaul.patch
 	cd $BASE_BUILD_DIR
 
 	cd external/harfbuzz_ng

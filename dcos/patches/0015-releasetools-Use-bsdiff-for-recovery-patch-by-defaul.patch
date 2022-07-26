@@ -1,0 +1,64 @@
+From 37d6102e948ebf4e866cf694b1347f31f5d291ae Mon Sep 17 00:00:00 2001
+From: Nicholas Lim <nicknitewolf@lineageos.org>
+Date: Tue, 1 Jun 2021 13:32:09 +0800
+Subject: [PATCH] releasetools: Use bsdiff for recovery patch by default
+
+* imgdiff seems to have issues setting recovery bonus data, most probably
+  due to libz from zlib-ng breaking it:
+
+imgdiff W 08-05 00:09:03 245235 245235 imgdiff.cpp:1408] Failed to reconstruct target deflate chunk 3 []; treating as
+normal
+imgdiff E 08-05 00:09:03 245235 245235 imgdiff.cpp:1363] Failed to set bonus data
+
+Traceback (most recent call last):
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/internal/stdlib/runpy.py", line 174, in _run_module_as_m
+ain
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/internal/stdlib/runpy.py", line 72, in _run_code
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/__main__.py", line 12, in <module>
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/internal/stdlib/runpy.py", line 174, in _run_module_as_m
+ain
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/internal/stdlib/runpy.py", line 72, in _run_code
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/make_recovery_patch.py", line 73, in <module>
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/make_recovery_patch.py", line 69, in main
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/common.py", line 3062, in MakeRecoveryPatch
+  File "/roms/wave/out/host/linux-x86/bin/make_recovery_patch/make_recovery_patch.py", line 67, in output_sink
+TypeError: argument 1 must be string or buffer, not None
+
+Co-authored-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+---
+ tools/releasetools/common.py | 19 ++-----------------
+ 1 file changed, 2 insertions(+), 17 deletions(-)
+
+diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
+index 6e3cd70a8..b6279399b 100644
+--- a/tools/releasetools/common.py
++++ b/tools/releasetools/common.py
+@@ -3519,23 +3519,8 @@ def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
+     output_sink(recovery_img_path, recovery_img.data)
+ 
+   else:
+-    system_root_image = info_dict.get("system_root_image") == "true"
+-    path = os.path.join(input_dir, recovery_resource_dat_path)
+-    # With system-root-image, boot and recovery images will have mismatching
+-    # entries (only recovery has the ramdisk entry) (Bug: 72731506). Use bsdiff
+-    # to handle such a case.
+-    if system_root_image:
+-      diff_program = ["bsdiff"]
+-      bonus_args = ""
+-      assert not os.path.exists(path)
+-    else:
+-      diff_program = ["imgdiff"]
+-      if os.path.exists(path):
+-        diff_program.append("-b")
+-        diff_program.append(path)
+-        bonus_args = "--bonus /vendor/etc/recovery-resource.dat"
+-      else:
+-        bonus_args = ""
++    diff_program = ["bsdiff"]
++    bonus_args = ""
+ 
+     d = Difference(recovery_img, boot_img, diff_program=diff_program)
+     _, _, patch = d.ComputePatch()
+-- 
+2.37.1
+
