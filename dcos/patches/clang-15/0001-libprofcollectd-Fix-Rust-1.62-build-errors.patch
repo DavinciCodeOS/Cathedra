@@ -1,0 +1,119 @@
+From e96daa620bce9ecb20e56a3eca9ffa32fded97b0 Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Wed, 27 Jul 2022 02:44:56 +0300
+Subject: [PATCH] libprofcollectd: Fix Rust 1.62 build errors
+
+Change-Id: Ic47175b6337174189343e01ebb640d4dd0db2bff
+---
+ profcollectd/libprofcollectd/config.rs  | 12 ++++++------
+ profcollectd/libprofcollectd/lib.rs     |  4 ++--
+ profcollectd/libprofcollectd/report.rs  |  2 +-
+ profcollectd/libprofcollectd/service.rs |  4 ++--
+ 4 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/profcollectd/libprofcollectd/config.rs b/profcollectd/libprofcollectd/config.rs
+index 902b5b5e..19e52b23 100644
+--- a/profcollectd/libprofcollectd/config.rs
++++ b/profcollectd/libprofcollectd/config.rs
+@@ -97,10 +97,10 @@ impl FromStr for Config {
+ }
+ 
+ fn get_or_initialise_node_id() -> Result<MacAddr6> {
+-    let mut node_id = get_property(&PROFCOLLECT_NODE_ID_PROPERTY, MacAddr6::nil())?;
++    let mut node_id = get_property(PROFCOLLECT_NODE_ID_PROPERTY, MacAddr6::nil())?;
+     if node_id.is_nil() {
+         node_id = generate_random_node_id();
+-        set_property(&PROFCOLLECT_NODE_ID_PROPERTY, node_id);
++        set_property(PROFCOLLECT_NODE_ID_PROPERTY, node_id);
+     }
+ 
+     Ok(node_id)
+@@ -117,8 +117,8 @@ where
+ {
+     let default_value = default_value.to_string();
+     let config = profcollect_libflags_rust::GetServerConfigurableFlag(
+-        &PROFCOLLECT_CONFIG_NAMESPACE,
+-        &key,
++        PROFCOLLECT_CONFIG_NAMESPACE,
++        key,
+         &default_value,
+     );
+     Ok(T::from_str(&config)?)
+@@ -130,7 +130,7 @@ where
+     T::Err: Error + Send + Sync + 'static,
+ {
+     let default_value = default_value.to_string();
+-    let value = profcollect_libbase_rust::GetProperty(&key, &default_value);
++    let value = profcollect_libbase_rust::GetProperty(key, &default_value);
+     Ok(T::from_str(&value)?)
+ }
+ 
+@@ -139,7 +139,7 @@ where
+     T: ToString,
+ {
+     let value = value.to_string();
+-    profcollect_libbase_rust::SetProperty(&key, &value);
++    profcollect_libbase_rust::SetProperty(key, &value);
+ }
+ 
+ fn generate_random_node_id() -> MacAddr6 {
+diff --git a/profcollectd/libprofcollectd/lib.rs b/profcollectd/libprofcollectd/lib.rs
+index 5892e259..490ab678 100644
+--- a/profcollectd/libprofcollectd/lib.rs
++++ b/profcollectd/libprofcollectd/lib.rs
+@@ -42,7 +42,7 @@ pub fn init_service(schedule_now: bool) -> Result<()> {
+ 
+     let profcollect_binder_service = ProfcollectdBinderService::new()?;
+     binder::add_service(
+-        &PROFCOLLECTD_SERVICE_NAME,
++        PROFCOLLECTD_SERVICE_NAME,
+         BnProfCollectd::new_binder(profcollect_binder_service, BinderFeatures::default())
+             .as_binder(),
+     )
+@@ -58,7 +58,7 @@ pub fn init_service(schedule_now: bool) -> Result<()> {
+ }
+ 
+ fn get_profcollectd_service() -> Result<binder::Strong<dyn IProfCollectd::IProfCollectd>> {
+-    binder::get_interface(&PROFCOLLECTD_SERVICE_NAME)
++    binder::get_interface(PROFCOLLECTD_SERVICE_NAME)
+         .context("Failed to get profcollectd binder service, is profcollectd running?")
+ }
+ 
+diff --git a/profcollectd/libprofcollectd/report.rs b/profcollectd/libprofcollectd/report.rs
+index a67d500b..69dff0c6 100644
+--- a/profcollectd/libprofcollectd/report.rs
++++ b/profcollectd/libprofcollectd/report.rs
+@@ -79,7 +79,7 @@ fn get_report_filename(node_id: &MacAddr6) -> Result<String> {
+     let since_epoch = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+     let ts =
+         Timestamp::from_unix(&*UUID_CONTEXT, since_epoch.as_secs(), since_epoch.subsec_nanos());
+-    let uuid = Uuid::new_v1(ts, &node_id.as_bytes())?;
++    let uuid = Uuid::new_v1(ts, node_id.as_bytes())?;
+     Ok(uuid.to_string())
+ }
+ 
+diff --git a/profcollectd/libprofcollectd/service.rs b/profcollectd/libprofcollectd/service.rs
+index a7fdce73..394acf3f 100644
+--- a/profcollectd/libprofcollectd/service.rs
++++ b/profcollectd/libprofcollectd/service.rs
+@@ -89,7 +89,7 @@ impl IProfCollectd for ProfcollectdBinderService {
+             .map_err(err_to_binder_status)
+     }
+     fn delete_report(&self, report_name: &str) -> BinderResult<()> {
+-        verify_report_name(&report_name).map_err(err_to_binder_status)?;
++        verify_report_name(report_name).map_err(err_to_binder_status)?;
+ 
+         let mut report = PathBuf::from(&*REPORT_OUTPUT_DIR);
+         report.push(report_name);
+@@ -101,7 +101,7 @@ impl IProfCollectd for ProfcollectdBinderService {
+         if bb_profile_id < 0 {
+             return Err(err_to_binder_status(anyhow!("Invalid profile ID")));
+         }
+-        verify_report_name(&report_name).map_err(err_to_binder_status)?;
++        verify_report_name(report_name).map_err(err_to_binder_status)?;
+ 
+         let mut report = PathBuf::from(&*REPORT_OUTPUT_DIR);
+         report.push(report_name);
+-- 
+2.37.1
+

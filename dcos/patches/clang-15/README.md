@@ -71,3 +71,7 @@ system/bt:
 system/security:
 
 0001-Fix-warnings-in-preparation-for-Rust-1.62.0.patch
+
+system/extras:
+
+0001-libprofcollectd-Fix-Rust-1.62-build-errors.patch

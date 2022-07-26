@@ -78,6 +78,8 @@ if [ "$PATCH_TYPE" = "dcos" ] ; then
 	cd system/extras
 	echo "[i] Applying 0012-add-fstab-entry-for-erofs-postinstall.patch"
 	git am -3 $CATHEDRA_PATH/dcos/patches/0012-add-fstab-entry-for-erofs-postinstall.patch
+	echo "[i] Applying 0001-libprofcollectd-Fix-Rust-1.62-build-errors.patch"
+	git am -3 $CATHEDRA_PATH/dcos/patches/clang-15/0001-libprofcollectd-Fix-Rust-1.62-build-errors.patch
 	cd $BASE_BUILD_DIR
 
 	cd prebuilts/clang/host/linux-x86
