@@ -1,0 +1,61 @@
+{
+    "frameworks/base": [
+        "0001-base-Clang-15-backports.patch"
+    ],
+    "build/soong": [
+        "0002-soong-Clang-14-15-Rust-1.62-backports.patch"
+    ],
+    "bionic": [
+        "0003-Reland-Use-the-dynamic-table-instead-of-__rela-_iplt.patch"
+    ],
+    "system/extras": [
+        "0004-libprofcollectd-Fix-Rust-1.62-build-errors.patch"
+    ],
+    "prebuilts/clang/host/linux-x86": [
+        "0005-No-scudo-prebuilts-since-clang-r437112.patch"
+    ],
+    "build/make": [
+        "0006-make-Change-llvm-ar-format-to-be-format.patch"
+    ],
+    "external/harfbuzz_ng": [
+        "0007-Do-not-use-pragma-diagnostics-as-a-workaround.patch"
+    ],
+    "system/netd": [
+        "0008-netd-Clang-15-backports.patch"
+    ],
+    "external/mdnsresponder": [
+        "0009-Increase-keyword-buffer-size-to-11-since-we-read-up-.patch"
+    ],
+    "system/apex": [
+        "0010-Remove-redundant-using-statement.patch"
+    ],
+    "frameworks/native": [
+        "0011-libbinder-Remove-redundant-using-android.patch",
+        "0012-Fix-error-for-compiler-update.patch",
+        "0013-binder-Fix-new-Rust-compiler-errors.patch"
+    ],
+    "frameworks/av": [
+        "0014-MediaMetrics-fix-error-for-compiler-update.patch",
+        "0015-Suppress-ordered-compare-function-pointers-warning.patch"
+    ],
+    "art": [
+        "0016-Switch-to-an-assembler-macro-for-CFI_RESTORE_STATE_A.patch",
+        "0017-Suppress-three-counts-of-compiler-warnings-for-frame.patch"
+    ],
+    "packages/modules/DnsResolver": [
+        "0018-Sanitize-buffer-alignment-macros.patch",
+        "0019-DnsResolver-Remove-redundant-using-statements.patch"
+    ],
+    "prebuilts/rust": [
+        "0020-rust-Backport-to-old-soong.patch"
+    ],
+    "packages/modules/Connectivity": [
+        "0021-Fix-deprecated-error-limit-linker-flag.patch"
+    ],
+    "system/bt": [
+        "0022-bt-Ignore-unused-value-warnings.patch"
+    ],
+    "system/security": [
+        "0023-Fix-warnings-in-preparation-for-Rust-1.62.0.patch"
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "system/core": [
+        "0001-Revert-libfs_avb-verifying-vbmeta-digest-early.patch"
+    ],
+    "vendor/aosp": [
+        "0002-vendor-davincicodeos-rebrand.patch",
+        "0003-vendor-fix-themedicons-path.patch",
+        "0004-build-Flatten-APEXs-for-performance.patch",
+        "0005-build-Set-ro.apex.updatable-false-in-product-propert.patch"
+    ],
+    "build/tools": [
+        "0006-releasetools-rebrand-to-davincicodeos.patch",
+        "0007-build-add-erofs-support.patch"
+    ],
+    "frameworks/base": [
+        "0008-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch",
+        "0009-core-jni-Switch-to-O3.patch"
+    ],
+    "build/soong": [
+        "0010-soong-clang-builds-with-O3.patch"
+    ],
+    "bionic": [
+        "0011-libc-switch-to-jemalloc-from-scudo.patch"
+    ],
+    "system/extras": [
+        "0012-add-fstab-entry-for-erofs-postinstall.patch"
+    ],
+    "build/make": [
+        "0013-releasetools-Use-bsdiff-for-recovery-patch-by-defaul.patch"
+    ]
+}
