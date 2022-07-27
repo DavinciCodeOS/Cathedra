@@ -1,0 +1,95 @@
+From 77f2d0ace900286f79be49c8aaaefb5c90d77428 Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Tue, 6 Apr 2021 15:55:54 -0700
+Subject: [PATCH 8/8] Revert "Pre-emptively take a snapshot when finishing an
+ activity before changing visibility"
+
+This reverts commit 6dad90e5883db82c345a3ab592b26f0fd69fe28d.
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent rendering and compressing JPEG screenshots, as
+reported by simpleperf:
+
+0.46%     /system/lib64/libjpeg.so                                                                                                                  encode_mcu_gather
+0.37%     /system/lib64/libhwui.so                                                                                                                  neon::S32_alpha_D32_filter_DX(SkBitmapProcState const&, unsigned int const*, int, unsigned int*)
+0.29%     /system/lib64/libjpeg.so                                                                                                                  jsimd_extrgbx_ycc_convert_neon
+0.27%     /system/lib64/libjpeg.so                                                                                                                  jsimd_fdct_islow_neon
+0.23%     /system/lib64/libjpeg.so                                                                                                                  jsimd_huff_encode_one_block_neon
+0.14%     /system/lib64/libjpeg.so                                                                                                                  jsimd_quantize_neon
+
+Call graph tracing reveals that TaskSnapshotPersister is responsible for
+taking the screenshots:
+
+0.16%     0.16%  /system/lib64/libjpeg.so                                                                                                encode_mcu_gather
+       |
+       -- encode_mcu_gather
+          |
+           --50.00%-- compress_output
+                      process_data_simple_main
+                      jpeg_write_scanlines
+                      SkJpegEncoder::onEncodeRows(int)
+                      SkJpegEncoder::Encode(SkWStream*, SkPixmap const&, SkJpegEncoder::Options const&)
+                      SkEncodeImage(SkWStream*, SkPixmap const&, SkEncodedImageFormat, int)
+                      android::Bitmap::compress(SkBitmap const&, android::Bitmap::JavaCompressFormat, int, SkWStream*)
+                      android::Bitmap::compress(android::Bitmap::JavaCompressFormat, int, SkWStream*)
+                      Bitmap_compress(_JNIEnv*, _jobject*, long, int, int, _jobject*, _jbyteArray*)
+                      art_jni_trampoline
+                      android.graphics.Bitmap.compress
+                      com.android.server.wm.TaskSnapshotPersister$StoreWriteQueueItem.writeBuffer
+                      com.android.server.wm.TaskSnapshotPersister$StoreWriteQueueItem.write
+                      com.android.server.wm.TaskSnapshotPersister$1.run
+                      art_quick_invoke_stub
+                      art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+                      art::JValue art::InvokeVirtualOrInterfaceWithJValues<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, jvalue const*)
+                      art::Thread::CreateCallback(void*)
+                      __pthread_start(void*)
+                      __start_thread
+
+Manual code tracing leads to ActivityRecord as the culprit, as it takes
+a screenshot every time an Activity is finished. This doesn't appear to
+be critical, so revert the commit that added it in order to reduce
+excess CPU usage.
+
+Test: simpleperf record -a; verify that libjpeg-turbo no longer appears
+      in top sample hits
+Change-Id: Ib161679f1f3b83787f90b8ef7dcf46d246bb7c57
+---
+ .../com/android/server/wm/ActivityRecord.java     | 15 ---------------
+ 1 file changed, 15 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/ActivityRecord.java b/services/core/java/com/android/server/wm/ActivityRecord.java
+index 618e421038c7..4d9edc9bea4b 100644
+--- a/services/core/java/com/android/server/wm/ActivityRecord.java
++++ b/services/core/java/com/android/server/wm/ActivityRecord.java
+@@ -347,8 +347,6 @@ import com.android.server.wm.SurfaceAnimator.AnimationType;
+ import com.android.server.wm.WindowManagerService.H;
+ import com.android.server.wm.utils.InsetUtils;
+ 
+-import com.google.android.collect.Sets;
+-
+ import org.xmlpull.v1.XmlPullParserException;
+ 
+ import java.io.File;
+@@ -3145,19 +3143,6 @@ final class ActivityRecord extends WindowToken implements WindowManagerService.A
+                 }
+                 mDisplayContent.prepareAppTransition(TRANSIT_CLOSE);
+ 
+-                // When finishing the activity preemptively take the snapshot before the app window
+-                // is marked as hidden and any configuration changes take place
+-                // Note that RecentsAnimation will handle task snapshot while switching apps with
+-                // the best capture timing (e.g. IME window capture),
+-                // No need additional task capture while task is controlled by RecentsAnimation.
+-                if (mAtmService.mWindowManager.mTaskSnapshotController != null
+-                        && !task.isAnimatingByRecents()) {
+-                    final ArraySet<Task> tasks = Sets.newArraySet(task);
+-                    mAtmService.mWindowManager.mTaskSnapshotController.snapshotTasks(tasks);
+-                    mAtmService.mWindowManager.mTaskSnapshotController
+-                            .addSkipClosingAppSnapshotTasks(tasks);
+-                }
+-
+                 // Tell window manager to prepare for this one to be removed.
+                 setVisibility(false);
+ 
+-- 
+2.36.1
+

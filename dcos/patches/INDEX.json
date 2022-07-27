@@ -14,18 +14,32 @@
     ],
     "frameworks/base": [
         "0008-PixelPropsUtils-Spoof-Pixel-XL-for-Snapchat.patch",
-        "0009-core-jni-Switch-to-O3.patch"
+        "0009-core-jni-Switch-to-O3.patch",
+        "0010-LayoutInflater-Opportunistically-create-views-direct.patch",
+        "0011-SystemServiceRegistry-Replace-ArrayMap-with-HashMap-.patch",
+        "0012-InsetsStateController-Replace-ArrayMap-with-HashMap-.patch",
+        "0013-LocalServices-Replace-ArrayMap-with-HashMap-for-perf.patch",
+        "0014-ThemedResourceCache-Replace-ArrayMap-with-HashMap-fo.patch",
+        "0015-Trace-Disable-debug-tracing-on-production-builds.patch",
+        "0016-PackageInfo-Optimize-ApplicationInfo-creation.patch",
+        "0017-Revert-Pre-emptively-take-a-snapshot-when-finishing-.patch"
     ],
     "build/soong": [
-        "0010-soong-clang-builds-with-O3.patch"
+        "0018-soong-clang-builds-with-O3.patch"
     ],
     "bionic": [
-        "0011-libc-switch-to-jemalloc-from-scudo.patch"
+        "0019-libc-switch-to-jemalloc-from-scudo.patch"
     ],
     "system/extras": [
-        "0012-add-fstab-entry-for-erofs-postinstall.patch"
+        "0020-add-fstab-entry-for-erofs-postinstall.patch"
     ],
     "build/make": [
-        "0013-releasetools-Use-bsdiff-for-recovery-patch-by-defaul.patch"
+        "0021-releasetools-Use-bsdiff-for-recovery-patch-by-defaul.patch"
+    ],
+    "art": [
+        "0022-art-Disable-debug-tracing-on-production-builds.patch",
+        "0023-Reland-Trigger-fewer-GCs-during-startup.patch",
+        "0024-optimization-of-gc-load-reduce-gc-in-some-scenarios.patch",
+        "0025-Fix-calculation-of-bytes-allocated-since-last-gc.patch"
     ]
 }

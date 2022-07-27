@@ -1,0 +1,85 @@
+From beedc7f5d7a5323a5665c831a43cd95a8a13fb38 Mon Sep 17 00:00:00 2001
+From: zengkaifa <zengkaifa@oppo.com>
+Date: Fri, 17 Sep 2021 09:51:57 +0800
+Subject: [PATCH 3/4] optimization of gc load, reduce gc in some scenarios
+
+1.NativeAlloc GC,Increase the count of the number of small native
+memory allocations.
+
+2.CollectTransition GC,App's allocations (since last GC) more than the threshold then do GC
+when the app was in background. If not then don't do GC.
+
+Expert in charge of ART, please evaluate this CL
+and hope to merge it in master branch.
+
+Bug:200116730
+Change-Id: Id2977f05eb249691326955e6f2424d4e5e08b417
+---
+ runtime/gc/heap.cc | 12 ++++++++++++
+ runtime/gc/heap.h  |  6 +++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/runtime/gc/heap.cc b/runtime/gc/heap.cc
+index 6e99d88f4b..1817eb1fa4 100644
+--- a/runtime/gc/heap.cc
++++ b/runtime/gc/heap.cc
+@@ -333,6 +333,7 @@ Heap::Heap(size_t initial_size,
+       old_native_bytes_allocated_(0),
+       native_objects_notified_(0),
+       num_bytes_freed_revoke_(0),
++      num_bytes_alive_after_gc_(0),
+       verify_missing_card_marks_(false),
+       verify_system_weaks_(false),
+       verify_pre_gc_heap_(verify_pre_gc_heap),
+@@ -2721,6 +2722,7 @@ collector::GcType Heap::CollectGarbageInternal(collector::GcType gc_type,
+   // Grow the heap so that we know when to perform the next GC.
+   GrowForUtilization(collector, bytes_allocated_before_gc);
+   old_native_bytes_allocated_.store(GetNativeBytes());
++  num_bytes_alive_after_gc_ = bytes_allocated_before_gc - current_gc_iteration_.GetFreedBytes();
+   LogGC(gc_cause, collector);
+   FinishGC(self, gc_type);
+   // Actually enqueue all cleared references. Do this after the GC has officially finished since
+@@ -3842,6 +3844,16 @@ void Heap::RequestCollectorTransition(CollectorType desired_collector_type, uint
+     // For CC, we invoke a full compaction when going to the background, but the collector type
+     // doesn't change.
+     DCHECK_EQ(desired_collector_type_, kCollectorTypeCCBackground);
++    // App's allocations (since last GC) more than the threshold then do TransitionGC
++    // when the app was in background. If not then don't do TransitionGC.
++    size_t num_bytes_allocated_since_gc = GetBytesAllocated() - num_bytes_alive_after_gc_;
++    if (num_bytes_allocated_since_gc <
++        (UnsignedDifference(target_footprint_.load(std::memory_order_relaxed),
++                            num_bytes_alive_after_gc_)/4)
++        && !kStressCollectorTransition
++        && !IsLowMemoryMode()) {
++      return;
++    }
+   }
+   DCHECK_NE(collector_type_, kCollectorTypeCCBackground);
+   CollectorTransitionTask* added_task = nullptr;
+diff --git a/runtime/gc/heap.h b/runtime/gc/heap.h
+index 0acac640c7..e93c17d435 100644
+--- a/runtime/gc/heap.h
++++ b/runtime/gc/heap.h
+@@ -166,7 +166,7 @@ class Heap {
+   // as object allocation time. time_to_call_mallinfo seems to be on the order of 1 usec
+   // on Android.
+ #ifdef __ANDROID__
+-  static constexpr uint32_t kNotifyNativeInterval = 32;
++  static constexpr uint32_t kNotifyNativeInterval = 64;
+ #else
+   // Some host mallinfo() implementations are slow. And memory is less scarce.
+   static constexpr uint32_t kNotifyNativeInterval = 384;
+@@ -1468,6 +1468,10 @@ class Heap {
+   // GC.
+   Atomic<size_t> num_bytes_freed_revoke_;
+ 
++  // Records the number of bytes allocated at the time of GC, which is used later to calculate
++  // how many bytes have been allocated since the last GC
++  size_t num_bytes_alive_after_gc_;
++
+   // Info related to the current or previous GC iteration.
+   collector::Iteration current_gc_iteration_;
+ 
+-- 
+2.36.1
+

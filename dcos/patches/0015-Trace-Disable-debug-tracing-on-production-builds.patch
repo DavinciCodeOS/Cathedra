@@ -1,0 +1,114 @@
+From ca863723e53ce5f93d852f2c6b729e91fb075cc8 Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Tue, 6 Apr 2021 08:26:47 -0700
+Subject: [PATCH 6/8] Trace: Disable debug tracing on production builds
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent checking whether ATrace tags are enabled, as measured
+by simpleperf:
+
+0.12%     /system/lib64/libcutils.so                                                                                                                atrace_get_enabled_tag
+
+android.os.Trace is responsible for a significant portion of the time
+spent in the checks:
+
+0.10%     0.07%  /system/lib64/libcutils.so                                                                                              atrace_get_enabled_tags
+       |
+       -- atrace_get_enabled_tags
+          |
+          |
+          |--1.62%-- android.os.Trace.traceEnd
+          |    |--36.90%-- [hit in function]
+          |    |
+          |    |--29.76%-- android.view.Choreographer.doCallbacks
+          |    |           android.view.Choreographer.doFrame
+          |    |           android.view.Choreographer$FrameDisplayEventReceiver.run
+          |    |           android.os.Handler.dispatchMessage
+          |    |           android.os.Looper.loop
+          |    |           android.os.HandlerThread.run
+          |    |           com.android.server.ServiceThread.run
+          |    |           art_quick_invoke_stub
+          |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+          |    |           art::JValue art::InvokeVirtualOrInterfaceWithJValues<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, jvalue const*)
+          |    |           art::Thread::CreateCallback(void*)
+          |    |           __pthread_start(void*)
+          |    |           __start_thread
+          |    |
+          |    |--19.00%-- com.android.server.BatteryService$BatteryPropertiesRegistrar.getProperty
+          |    |           android.os.IBatteryPropertiesRegistrar$Stub.onTransact
+          |    |           android.os.Binder.execTransactInternal
+          |    |           android.os.Binder.execTransact
+          |    |           art_quick_invoke_stub
+          |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+          |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+          |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+          |    |           art::JNI<false>::CallBooleanMethodV(_JNIEnv*, _jobject*, _jmethodID*, std::__va_list)
+          |    |           _JNIEnv::CallBooleanMethod(_jobject*, _jmethodID*, ...)
+          |    |           JavaBBinder::onTransact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+          |    |           android::BBinder::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+          |    |           android::IPCThreadState::executeCommand(int)
+          |    |           android::IPCThreadState::getAndExecuteCommand()
+          |    |           android::IPCThreadState::joinThreadPool(bool)
+          |    |           android::PoolThread::threadLoop()
+          |    |           android::Thread::_threadLoop(void*)
+          |    |           android::AndroidRuntime::javaThreadShell(void*)
+          |    |           thread_data_t::trampoline(thread_data_t const*)
+          |    |           __pthread_start(void*)
+          |    |           __start_thread
+          |    |
+          |     --14.33%-- android.view.ViewRootImpl.performDraw
+          |                android.view.ViewRootImpl.performTraversals
+          |                android.view.ViewRootImpl.doTraversal
+          |                android.content.ContextWrapper.getAssets [DEDUPED]
+          |                android.view.Choreographer.doCallbacks
+          |                android.view.Choreographer.doFrame
+          |                android.view.Choreographer$FrameDisplayEventReceiver.run
+          |                android.os.Handler.dispatchMessage
+          |                android.os.Looper.loop
+          |                android.app.ActivityThread.main
+          |                art_quick_invoke_static_stub
+          |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+          |                art::InvokeMethod(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jobject*, _jobject*, unsigned long)
+          |                art::Method_invoke(_JNIEnv*, _jobject*, _jobject*, _jobjectArray*)
+          |                art_jni_trampoline
+          |                com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run
+          |                com.android.internal.os.ZygoteInit.main
+          |                art_quick_invoke_static_stub
+          |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+          |                art::JValue art::InvokeWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+          |                art::JValue art::InvokeWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+          |                art::JNI<true>::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)
+          |                _JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)
+          |                android::AndroidRuntime::start(char const*, android::Vector<android::String8> const&, bool)
+          |                main
+          |                __libc_init
+
+We're unlikely to trace the system and framework in production systems,
+so disable debug tracing in non-debuggable builds. The ro.debuggable
+check is performed from the Java side for simplicity.
+
+Test: simpleperf record -a; verify that android.os.Trace no longer
+      appears under atrace_get_enabled_tags
+Change-Id: I9b63d386c041ffd9d7ff34ecd0ec1eb95dc03b4b
+---
+ core/java/android/os/Trace.java | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/core/java/android/os/Trace.java b/core/java/android/os/Trace.java
+index ddb6533547bb..85fad2833e81 100644
+--- a/core/java/android/os/Trace.java
++++ b/core/java/android/os/Trace.java
+@@ -145,6 +145,10 @@ public final class Trace {
+      */
+     @UnsupportedAppUsage
+     public static boolean isTagEnabled(long traceTag) {
++        if (!Build.IS_DEBUGGABLE) {
++            return false;
++        }
++
+         long tags = nativeGetEnabledTags();
+         return (tags & traceTag) != 0;
+     }
+-- 
+2.36.1
+

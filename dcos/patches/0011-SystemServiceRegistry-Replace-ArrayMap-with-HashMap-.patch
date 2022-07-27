@@ -1,0 +1,155 @@
+From 86d20a403b9143166a6da0450fa58d2bbb237a40 Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Mon, 5 Apr 2021 23:05:02 -0700
+Subject: [PATCH 2/8] SystemServiceRegistry: Replace ArrayMap with HashMap for
+ performance
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent looking up ArrayMap entries, as reported by simpleperf:
+
+0.12%     /system/framework/arm64/boot-framework.oat
+                             android.util.ArrayMap.binarySearchHashes
+
+PackageManagerService is responsible for a significant portion of the time
+spent in ArrayMap lookups:
+
+0.08%     0.08%  /system/framework/arm64/boot-framework.oat
+                  android.util.ArrayMap.binarySearchHashes
+       |
+       -- android.util.ArrayMap.binarySearchHashes
+          |
+           --50.00%-- android.util.ArrayMap.indexOf
+               |
+               |--36.71%-- android.util.ArrayMap.get
+               |    |--0.87%-- [hit in function]
+               |    |
+               |    |--5.42%-- android.app.SystemServiceRegistry.getSystemService
+               |    |          android.app.ContextImpl.getSystemService
+               |    |          android.view.ContextThemeWrapper.getSystemService
+               |    |          android.app.Activity.getSystemService
+               |    |    |
+               |    |    |--52.18%-- TemporaryFile-kEdnnv[+9b97baa8]
+               |    |    |           TemporaryFile-FwF2he[+9b96d048]
+               |    |    |           art_quick_invoke_stub
+               |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |           art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, art::ShadowFrame*, unsigned short, art::JValue*)
+               |    |    |           bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)
+               |    |    |           MterpInvokeVirtual
+               |    |    |           mterp_op_invoke_virtual
+               |    |    |           libcrypto.so[+3fac6]
+               |    |    |           MterpInvokeDirect
+               |    |    |           mterp_op_invoke_direct
+               |    |    |           libcrypto.so[+3faa8]
+               |    |    |           MterpInvokeVirtual
+               |    |    |           mterp_op_invoke_virtual
+               |    |    |           libcrypto.so[+3730c]
+               |    |    |           art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, art::ShadowFrame&, art::JValue, bool, bool) (.llvm.13341777805210357670)
+               |    |    |           artQuickToInterpreterBridge
+               |    |    |           art_quick_to_interpreter_bridge
+               |    |    |           java.util.concurrent.Executors$RunnableAdapter.call
+               |    |    |           java.util.concurrent.FutureTask.run
+               |    |    |           java.util.concurrent.ThreadPoolExecutor.runWorker
+               |    |    |           java.util.concurrent.ThreadPoolExecutor$Worker.run
+               |    |    |           java.lang.Thread.run
+               |    |    |           art_quick_invoke_stub
+               |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithJValues<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, jvalue const*)
+               |    |    |           art::Thread::CreateCallback(void*)
+               |    |    |           __pthread_start(void*)
+               |    |    |           __start_thread
+               |    |    |
+               |    |     --47.82%-- android.view.ContextThemeWrapper.getSystemService
+               |    |                android.view.ContextThemeWrapper.getSystemService
+               |    |                android.content.Context.getSystemService
+               |    |                android.view.View.onVisibilityAggregated
+               |    |                android.view.View.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewGroup.dispatchAttachedToWindow
+               |    |                android.view.ViewRootImpl.performTraversals
+               |    |                android.view.ViewRootImpl.doTraversal
+               |    |                android.content.ContextWrapper.getAssets [DEDUPED]
+               |    |                android.view.Choreographer.doCallbacks
+               |    |                android.view.Choreographer.doFrame
+               |    |                android.view.Choreographer$FrameDisplayEventReceiver.run
+               |    |                android.os.Handler.dispatchMessage
+               |    |                android.os.Looper.loop
+               |    |                android.app.ActivityThread.main
+               |    |                art_quick_invoke_static_stub
+               |    |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |                art::InvokeMethod(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jobject*, _jobject*, unsigned long)
+               |    |                art::Method_invoke(_JNIEnv*, _jobject*, _jobject*, _jobjectArray*)
+               |    |                art_jni_trampoline
+               |    |                com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run
+               |    |                com.android.internal.os.ZygoteInit.main
+               |    |                art_quick_invoke_static_stub
+               |    |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |                art::JValue art::InvokeWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+               |    |                art::JValue art::InvokeWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+               |    |                art::JNI<true>::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)
+               |    |                _JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)
+               |    |                android::AndroidRuntime::start(char const*, android::Vector<android::String8> const&, bool)
+               |    |                main
+               |    |                __libc_init
+               |    |
+
+Empirical testing reveals that SYSTEM_SERVICE_FETCHERS contains 134
+entries, at which HashMap is 54% faster than ArrayMap for lookups and
+74% faster [1] for insertions. The increased memory usage should be
+a worthwhile trade-off at this size, so we can safely convert the map
+to a HashMap in order to improve performance in this hotpath.
+
+Because SYSTEM_SERVICE_NAMES, SYSTEM_SERVICE_FETCHERS, and
+SYSTEM_SERVICE_CLASS_NAMES have the same names and similar uses, all of
+them have been converted to HashMaps for consistency and performance.
+
+[1] https://docs.google.com/spreadsheets/d/136UJS2yVlZyPx30KDNgj4AWldkp9xbzIcWkLFj9RGgk/edit
+
+Test: simpleperf record -a; verify that SystemServiceRegistry no longer
+      appears under ArrayMap.binarySearchHashes
+Change-Id: I2a5b23793a4fc8aa720eead3ecc7ca4589cb67da
+---
+ core/java/android/app/SystemServiceRegistry.java | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
+index 32ea41b2c75f..e727b78e8add 100644
+--- a/core/java/android/app/SystemServiceRegistry.java
++++ b/core/java/android/app/SystemServiceRegistry.java
+@@ -202,7 +202,6 @@ import android.telecom.TelecomManager;
+ import android.telephony.MmsManager;
+ import android.telephony.TelephonyFrameworkInitializer;
+ import android.telephony.TelephonyRegistryManager;
+-import android.util.ArrayMap;
+ import android.util.Log;
+ import android.util.Slog;
+ import android.uwb.UwbManager;
+@@ -234,6 +233,7 @@ import com.android.internal.os.IDropBoxManagerService;
+ import com.android.internal.policy.PhoneLayoutInflater;
+ import com.android.internal.util.Preconditions;
+ 
++import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Objects;
+ 
+@@ -253,10 +253,10 @@ public final class SystemServiceRegistry {
+     // Service registry information.
+     // This information is never changed once static initialization has completed.
+     private static final Map<Class<?>, String> SYSTEM_SERVICE_NAMES =
+-            new ArrayMap<Class<?>, String>();
++            new HashMap<Class<?>, String>();
+     private static final Map<String, ServiceFetcher<?>> SYSTEM_SERVICE_FETCHERS =
+-            new ArrayMap<String, ServiceFetcher<?>>();
+-    private static final Map<String, String> SYSTEM_SERVICE_CLASS_NAMES = new ArrayMap<>();
++            new HashMap<String, ServiceFetcher<?>>();
++    private static final Map<String, String> SYSTEM_SERVICE_CLASS_NAMES = new HashMap<>();
+ 
+     private static int sServiceCacheSize;
+ 
+-- 
+2.36.1
+

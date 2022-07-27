@@ -1,0 +1,96 @@
+From cf120b2b19c66d47240c194832b24c3a374eb572 Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Sun, 21 Mar 2021 19:13:39 -0700
+Subject: [PATCH 1/4] art: Disable debug tracing on production builds
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent checking whether ATrace tags are enabled, as measured
+by simpleperf:
+
+0.12%     /system/lib64/libcutils.so                                                                                                                atrace_get_enabled_tag
+
+ART debug tracing (via PALette) is responsible for a significant
+portion of the time spent in the checks:
+
+0.10%     0.07%  /system/lib64/libcutils.so                                                                                              atrace_get_enabled_tags
+       |
+       -- atrace_get_enabled_tags
+          |
+          |--30.47%-- PaletteTraceEnabled
+          |    |
+          |    |--96.11%-- art::Monitor::TryLock(art::Thread*, bool)
+          |    |           void art::Monitor::Lock<(art::LockReason)1>(art::Thread*)
+          |    |           art::Monitor::MonitorEnter(art::Thread*, art::ObjPtr<art::mirror::Object>, bool)
+          |    |           artLockObjectFromCode
+          |    |           art_quick_lock_object_no_inline
+          |    |    |--8.63%-- [hit in function]
+          |    |    |
+          |    |    |--18.62%-- android.os.Parcel.obtain
+          |
+          |--2.44%-- PaletteTraceIntegerValue
+          |    |
+          |    |--25.86%-- art::mirror::String::AllocFromModifiedUtf8(art::Thread*, int, char const*, int)
+          |    |
+          |    |--22.90%-- art::mirror::Object* art::gc::Heap::AllocLargeObject<false, art::mirror::SetLengthVisitor>(art::Thread*, art::ObjPtr<art::mirror::Class>*, unsigned long, art::mirror::SetLengthVisitor const&)
+          |    |
+          |    |--19.85%-- artAllocArrayFromCodeResolvedRegionTLAB
+          |    |
+          |    |--19.71%-- art::mirror::String::AllocFromUtf16(art::Thread*, int, unsigned short const*)
+          |    |
+          |     --11.70%-- art::mirror::Object::Clone(art::Handle<art::mirror::Object>, art::Thread*)
+
+We aren't going to use ATrace for ART in production systems, so disable
+debug tracing in non-debug builds.
+
+Test: simpleperf record -a; verify that PaletteTraceEnabled no longer
+      appears under atrace_get_enabled_tags
+Change-Id: If5cdb18adb17b04f5f7eb7c59cfb3f9ceaecb5be
+---
+ libartbase/base/systrace.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/libartbase/base/systrace.h b/libartbase/base/systrace.h
+index 42975d7931..b5b1404d79 100644
+--- a/libartbase/base/systrace.h
++++ b/libartbase/base/systrace.h
+@@ -27,24 +27,37 @@
+ namespace art {
+ 
+ inline bool ATraceEnabled() {
++#ifdef NDEBUG
++  return false;
++#else
+   bool enabled = false;
+   if (UNLIKELY(PaletteTraceEnabled(&enabled) == PALETTE_STATUS_OK && enabled)) {
+     return true;
+   } else {
+     return false;
+   }
++#endif
+ }
+ 
+ inline void ATraceBegin(const char* name) {
++  (void)name;
++#ifndef NDEBUG
+   PaletteTraceBegin(name);
++#endif
+ }
+ 
+ inline void ATraceEnd() {
++#ifndef NDEBUG
+   PaletteTraceEnd();
++#endif
+ }
+ 
+ inline void ATraceIntegerValue(const char* name, int32_t value) {
++  (void)name;
++  (void)value;
++#ifndef NDEBUG
+   PaletteTraceIntegerValue(name, value);
++#endif
+ }
+ 
+ class ScopedTrace {
+-- 
+2.36.1
+

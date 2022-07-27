@@ -1,0 +1,127 @@
+From 3a72717e9c3bea78c52021e7bda7c5d050fcf2ac Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Mon, 5 Apr 2021 22:39:55 -0700
+Subject: [PATCH 4/8] LocalServices: Replace ArrayMap with HashMap for
+ performance
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent looking up ArrayMap entries, as reported by simpleperf:
+
+0.12%     /system/framework/arm64/boot-framework.oat                                                                                                android.util.ArrayMap.binarySearchHashes
+
+LocalServices is responsible for a significant portion of the time
+spent in ArrayMap lookups:
+
+0.08%     0.08%  /system/framework/arm64/boot-framework.oat                                                                              android.util.ArrayMap.binarySearchHashes
+       |
+       -- android.util.ArrayMap.binarySearchHashes
+          |
+           --50.00%-- android.util.ArrayMap.indexOf
+               |
+               |--36.71%-- android.util.ArrayMap.get
+               |    |--0.87%-- [hit in function]
+               |    |
+               |    |--6.12%-- com.android.server.LocalServices.getService
+               |    |    |
+               |    |    |--42.41%-- com.android.server.inputmethod.InputMethodManagerInternal.get [DEDUPED]
+               |    |    |           com.android.server.wm.-$$Lambda$DisplayContent$-xtu90EUfC_AM8Qe5g8vDDI07_E.run
+               |    |    |           android.os.Handler.dispatchMessage
+               |    |    |           android.os.Looper.loop
+               |    |    |           android.os.HandlerThread.run
+               |    |    |           com.android.server.ServiceThread.run
+               |    |    |           art_quick_invoke_stub
+               |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithJValues<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, jvalue const*)
+               |    |    |           art::Thread::CreateCallback(void*)
+               |    |    |           __pthread_start(void*)
+               |    |    |           __start_thread
+               |    |    |
+               |    |    |--36.66%-- com.android.server.notification.NotificationManagerService.enqueueNotificationInternal
+               |    |    |           com.android.server.notification.NotificationManagerService.enqueueNotificationInternal
+               |    |    |           com.android.server.notification.NotificationManagerService$10.enqueueNotificationWithTag
+               |    |    |           android.app.INotificationManager$Stub.onTransact
+               |    |    |           android.os.Binder.execTransactInternal
+               |    |    |           android.os.Binder.execTransact
+               |    |    |           art_quick_invoke_stub
+               |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+               |    |    |           art::JNI<false>::CallBooleanMethodV(_JNIEnv*, _jobject*, _jmethodID*, std::__va_list)
+               |    |    |           _JNIEnv::CallBooleanMethod(_jobject*, _jmethodID*, ...)
+               |    |    |           JavaBBinder::onTransact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |    |           android::BBinder::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |    |           android::IPCThreadState::executeCommand(int)
+               |    |    |           android::IPCThreadState::getAndExecuteCommand()
+               |    |    |           android::IPCThreadState::joinThreadPool(bool)
+               |    |    |           android::PoolThread::threadLoop()
+               |    |    |           android::Thread::_threadLoop(void*)
+               |    |    |           android::AndroidRuntime::javaThreadShell(void*)
+               |    |    |           thread_data_t::trampoline(thread_data_t const*)
+               |    |    |           __pthread_start(void*)
+               |    |    |           __start_thread
+               |    |    |
+               |    |     --20.93%-- com.android.server.oemlock.OemLockService.setPersistentDataBlockOemUnlockAllowedBit
+               |    |                com.android.server.oemlock.OemLockService$2.isOemUnlockAllowed
+               |    |                android.service.oemlock.IOemLockService$Stub.onTransact
+               |    |                android.os.Binder.execTransactInternal
+               |    |                android.os.Binder.execTransact
+               |    |                art_quick_invoke_stub
+               |    |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |                art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+               |    |                art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+               |    |                art::JNI<false>::CallBooleanMethodV(_JNIEnv*, _jobject*, _jmethodID*, std::__va_list)
+               |    |                _JNIEnv::CallBooleanMethod(_jobject*, _jmethodID*, ...)
+               |    |                JavaBBinder::onTransact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |                android::BBinder::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |                android::IPCThreadState::executeCommand(int)
+               |    |                android::IPCThreadState::getAndExecuteCommand()
+               |    |                android::IPCThreadState::joinThreadPool(bool)
+               |    |                android::PoolThread::threadLoop()
+               |    |                android::Thread::_threadLoop(void*)
+               |    |                android::AndroidRuntime::javaThreadShell(void*)
+               |    |                thread_data_t::trampoline(thread_data_t const*)
+               |    |                __pthread_start(void*)
+               |    |                __start_thread
+
+Empirical testing reveals that sLocalServiceObjects usually contains
+68 entries, at which HashMap is 47% faster than ArrayMap for lookups
+and 68% faster [1] for insertions. The increased memory usage should be
+negligible at this size, so we can safely convert the map to a HashMap
+in order to improve performance in this hotpath.
+
+[1] https://docs.google.com/spreadsheets/d/136UJS2yVlZyPx30KDNgj4AWldkp9xbzIcWkLFj9RGgk/edit
+
+Test: simpleperf record -a; verify that LocalServices no longer
+      appears under ArrayMap.binarySearchHashes
+Change-Id: Ifd1f8b7940eba7723f93a73456470a84d34656ae
+---
+ core/java/com/android/server/LocalServices.java | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/com/android/server/LocalServices.java b/core/java/com/android/server/LocalServices.java
+index 9c632ea725a9..ca94bb08afc0 100644
+--- a/core/java/com/android/server/LocalServices.java
++++ b/core/java/com/android/server/LocalServices.java
+@@ -18,7 +18,7 @@ package com.android.server;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
+ 
+-import android.util.ArrayMap;
++import java.util.HashMap;
+ 
+ /**
+  * This class is used in a similar way as ServiceManager, except the services registered here
+@@ -32,8 +32,8 @@ import android.util.ArrayMap;
+ public final class LocalServices {
+     private LocalServices() {}
+ 
+-    private static final ArrayMap<Class<?>, Object> sLocalServiceObjects =
+-            new ArrayMap<Class<?>, Object>();
++    private static final HashMap<Class<?>, Object> sLocalServiceObjects =
++            new HashMap<Class<?>, Object>();
+ 
+     /**
+      * Returns a local service instance that implements the specified interface.
+-- 
+2.36.1
+

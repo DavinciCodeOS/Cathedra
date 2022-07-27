@@ -1,0 +1,152 @@
+From b034f838f035a5fc0215fbf1b9285c39eddf0ada Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Wed, 24 Mar 2021 18:56:33 -0700
+Subject: [PATCH 5/8] ThemedResourceCache: Replace ArrayMap with HashMap for
+ performance
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent looking up ArrayMap entries, as reported by simpleperf:
+
+0.12%     /system/framework/arm64/boot-framework.oat                                                                                                android.util.ArrayMap.binarySearchHashes
+
+ThemedResourceCache is responsible for a significant portion of the time
+spent in ArrayMap lookups:
+
+0.08%     0.08%  /system/framework/arm64/boot-framework.oat                                                                              android.util.ArrayMap.binarySearchHashes
+       |
+       -- android.util.ArrayMap.binarySearchHashes
+          |
+           --50.00%-- android.util.ArrayMap.indexOf
+               |
+               |--36.71%-- android.util.ArrayMap.get
+               |    |--0.87%-- [hit in function]
+               |    |
+               |    |--9.64%-- android.content.res.ThemedResourceCache.getThemedLocked
+               |    |          android.content.res.ThemedResourceCache.get
+               |    |    |
+               |    |    |--77.92%-- android.content.res.DrawableCache.getInstance
+               |    |    |           android.content.res.ResourcesImpl.loadDrawable
+               |    |    |           android.content.res.Resources.loadDrawable
+               |    |    |           android.content.res.TypedArray.getDrawableForDensity
+               |    |    |           android.content.res.Resources.getColor [DEDUPED]
+               |    |    |    |
+               |    |    |    |--62.94%-- android.view.View.<init>
+               |    |    |    |    |
+               |    |    |    |    |--64.58%-- android.view.ViewGroup.<init>
+               |    |    |    |    |           android.widget.LinearLayout.<init>
+               |    |    |    |    |           android.widget.LinearLayout.<init>
+               |    |    |    |    |           art_quick_invoke_stub
+               |    |    |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |    |    |           art::InvokeConstructor(art::ScopedObjectAccessAlreadyRunnable const&, art::ArtMethod*, art::ObjPtr<art::mirror::Object>, _jobject*)
+               |    |    |    |    |           art::Constructor_newInstance0(_JNIEnv*, _jobject*, _jobjectArray*)
+               |    |    |    |    |           art_jni_trampoline
+               |    |    |    |    |           java.lang.reflect.Constructor.newInstance
+               |    |    |    |    |           android.view.LayoutInflater.createView
+               |    |    |    |    |           com.android.internal.policy.PhoneLayoutInflater.onCreateView
+               |    |    |    |    |           android.view.LayoutInflater.onCreateView
+               |    |    |    |    |           android.view.LayoutInflater.onCreateView
+               |    |    |    |    |           android.view.LayoutInflater.createViewFromTag
+               |    |    |    |    |           android.view.LayoutInflater.inflate
+               |    |    |    |    |           android.view.LayoutInflater.inflate
+               |    |    |    |    |
+               |    |    |    |     --35.42%-- android.widget.TextView.<init>
+               |    |    |    |                android.widget.Button.<init>
+               |    |    |    |                art_quick_invoke_stub
+               |    |    |    |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |    |                art::InvokeConstructor(art::ScopedObjectAccessAlreadyRunnable const&, art::ArtMethod*, art::ObjPtr<art::mirror::Object>, _jobject*)
+               |    |    |    |                art::Constructor_newInstance0(_JNIEnv*, _jobject*, _jobjectArray*)
+               |    |    |    |                art_jni_trampoline
+               |    |    |    |                java.lang.reflect.Constructor.newInstance
+               |    |    |    |                android.view.LayoutInflater.createView
+               |    |    |    |                com.android.internal.policy.PhoneLayoutInflater.onCreateView
+               |    |    |    |                android.view.LayoutInflater.onCreateView
+               |    |    |    |                android.view.LayoutInflater.onCreateView
+               |    |    |    |                android.view.LayoutInflater.createViewFromTag
+               |    |    |    |                android.view.LayoutInflater.rInflate
+               |    |    |    |                android.view.LayoutInflater.rInflate
+               |    |    |    |                android.view.LayoutInflater.rInflate
+               |    |    |    |                android.view.LayoutInflater.inflate
+               |    |    |    |                android.view.LayoutInflater.inflate
+               |    |    |    |                android.view.LayoutInflater.inflate
+               |    |    |    |
+               |    |    |     --37.06%-- com.android.internal.widget.ToolbarWidgetWrapper.<init>
+               |    |    |
+               |    |     --22.08%-- android.content.res.ConfigurationBoundResourceCache.get
+               |    |                android.content.res.ConfigurationBoundResourceCache.getInstance
+               |    |                android.content.res.ResourcesImpl.loadComplexColorFromName
+               |    |                android.content.res.ResourcesImpl.loadColorStateList
+               |    |                android.content.res.Resources.loadColorStateList
+               |    |                android.content.res.TypedArray.getColorStateList
+               |    |                android.widget.TextView.readTextAppearance
+               |    |                android.widget.TextView.setTextAppearance
+               |    |                android.widget.TextView.setTextAppearance
+               |    |                android.widget.Toolbar.setTitle
+               |    |                com.android.wifi.x.com.android.internal.util.StateMachine$SmHandler.handleMessage
+               |    |                android.view.SurfaceControl.copyFrom
+
+Empirical testing reveals that mThemedEntries usually contains around 14
+entries, at which HashMap is 35% faster than ArrayMap for lookups and
+54% faster [1] for insertions. The increased memory usage should be
+negligible at this size, so we can safely convert the map to a HashMap
+in order to improve performance in this hotpath.
+
+[1] https://docs.google.com/spreadsheets/d/136UJS2yVlZyPx30KDNgj4AWldkp9xbzIcWkLFj9RGgk/edit
+
+Test: simpleperf record -a; verify that ThemedResourceCache no longer
+      appears under ArrayMap.binarySearchHashes
+Change-Id: I39e1c4b03fe0e60f933f02e253d2d3c4a483146f
+---
+ .../android/content/res/ThemedResourceCache.java    | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/core/java/android/content/res/ThemedResourceCache.java b/core/java/android/content/res/ThemedResourceCache.java
+index 3270944ce7e3..e0701b90d6fa 100644
+--- a/core/java/android/content/res/ThemedResourceCache.java
++++ b/core/java/android/content/res/ThemedResourceCache.java
+@@ -22,10 +22,10 @@ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.pm.ActivityInfo.Config;
+ import android.content.res.Resources.Theme;
+ import android.content.res.Resources.ThemeKey;
+-import android.util.ArrayMap;
+ import android.util.LongSparseArray;
+ 
+ import java.lang.ref.WeakReference;
++import java.util.HashMap;
+ 
+ /**
+  * Data structure used for caching data against themes.
+@@ -34,7 +34,7 @@ import java.lang.ref.WeakReference;
+  */
+ abstract class ThemedResourceCache<T> {
+     @UnsupportedAppUsage
+-    private ArrayMap<ThemeKey, LongSparseArray<WeakReference<T>>> mThemedEntries;
++    private HashMap<ThemeKey, LongSparseArray<WeakReference<T>>> mThemedEntries;
+     private LongSparseArray<WeakReference<T>> mUnthemedEntries;
+     private LongSparseArray<WeakReference<T>> mNullThemedEntries;
+ 
+@@ -154,7 +154,7 @@ abstract class ThemedResourceCache<T> {
+ 
+         if (mThemedEntries == null) {
+             if (create) {
+-                mThemedEntries = new ArrayMap<>(1);
++                mThemedEntries = new HashMap<>(1);
+             } else {
+                 return null;
+             }
+@@ -199,11 +199,8 @@ abstract class ThemedResourceCache<T> {
+     private boolean prune(@Config int configChanges) {
+         synchronized (this) {
+             if (mThemedEntries != null) {
+-                for (int i = mThemedEntries.size() - 1; i >= 0; i--) {
+-                    if (pruneEntriesLocked(mThemedEntries.valueAt(i), configChanges)) {
+-                        mThemedEntries.removeAt(i);
+-                    }
+-                }
++                mThemedEntries.entrySet()
++                    .removeIf(entry -> pruneEntriesLocked(entry.getValue(), configChanges));
+             }
+ 
+             pruneEntriesLocked(mNullThemedEntries, configChanges);
+-- 
+2.36.1
+

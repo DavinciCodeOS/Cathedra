@@ -1,0 +1,212 @@
+From efe46a4e9981a69fe8c4e409f67adb848fdb602d Mon Sep 17 00:00:00 2001
+From: Danny Lin <danny@kdrag0n.dev>
+Date: Tue, 5 Oct 2021 20:09:39 -0700
+Subject: [PATCH 3/8] InsetsStateController: Replace ArrayMap with HashMap for
+ performance
+
+When opening and closing activities in Settings, a significant amount of
+CPU time is spent looking up ArrayMap entries, as reported by simpleperf:
+
+0.12%     /system/framework/arm64/boot-framework.oat
+                             android.util.ArrayMap.binarySearchHashes
+
+InsetsStateController is responsible for a significant portion of the time
+spent in ArrayMap lookups:
+
+0.08%     0.08%  /system/framework/arm64/boot-framework.oat
+                  android.util.ArrayMap.binarySearchHashes
+       |
+       -- android.util.ArrayMap.binarySearchHashes
+          |
+           --50.00%-- android.util.ArrayMap.indexOf
+               |
+               |--36.71%-- android.util.ArrayMap.get
+               |    |--0.87%-- [hit in function]
+               |    |
+               |    |--6.67%-- com.android.server.wm.InsetsStateController.peekSourceProvider
+               |    |    |
+               |    |    |--68.77%-- com.android.server.wm.DisplayPolicy.beginLayoutLw
+               |    |    |           com.android.server.wm.DisplayContent.performLayoutNoTrace
+               |    |    |           com.android.server.wm.DisplayContent.performLayout
+               |    |    |           com.android.server.wm.DisplayContent.applySurfaceChangesTransaction
+               |    |    |           com.android.server.wm.RootWindowContainer.applySurfaceChangesTransaction
+               |    |    |           com.android.server.wm.RootWindowContainer.performSurfacePlacementNoTrace
+               |    |    |           com.android.server.wm.RootWindowContainer.performSurfacePlacement
+               |    |    |           com.android.server.wm.WindowSurfacePlacer.performSurfacePlacementLoop
+               |    |    |           com.android.server.wm.WindowSurfacePlacer.performSurfacePlacement
+               |    |    |           com.android.server.wm.WindowManagerService.relayoutWindow
+               |    |    |           com.android.server.wm.Session.relayout
+               |    |    |           android.view.IWindowSession$Stub.onTransact
+               |    |    |           com.android.server.wm.Session.onTransact
+               |    |    |           android.os.Binder.execTransactInternal
+               |    |    |           android.os.Binder.execTransact
+               |    |    |           art_quick_invoke_stub
+               |    |    |           art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+               |    |    |           art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+               |    |    |           art::JNI<false>::CallBooleanMethodV(_JNIEnv*, _jobject*, _jmethodID*, std::__va_list)
+               |    |    |           _JNIEnv::CallBooleanMethod(_jobject*, _jmethodID*, ...)
+               |    |    |           JavaBBinder::onTransact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |    |           android::BBinder::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |    |           android::IPCThreadState::executeCommand(int)
+               |    |    |           android::IPCThreadState::getAndExecuteCommand()
+               |    |    |           android::IPCThreadState::joinThreadPool(bool)
+               |    |    |           android::PoolThread::threadLoop()
+               |    |    |           android::Thread::_threadLoop(void*)
+               |    |    |           android::AndroidRuntime::javaThreadShell(void*)
+               |    |    |           thread_data_t::trampoline(thread_data_t const*)
+               |    |    |           __pthread_start(void*)
+               |    |    |           __start_thread
+               |    |    |
+               |    |     --31.23%-- com.android.server.wm.DisplayPolicy.updateHideNavInputEventReceiver
+               |    |                com.android.server.wm.InsetsPolicy.updateBarControlTarget
+               |    |                com.android.server.wm.DisplayPolicy.updateSystemUiVisibilityLw
+               |    |                com.android.server.wm.DisplayPolicy.finishPostLayoutPolicyLw
+               |    |                com.android.server.wm.DisplayContent.applySurfaceChangesTransaction
+               |    |                com.android.server.wm.RootWindowContainer.applySurfaceChangesTransaction
+               |    |                com.android.server.wm.RootWindowContainer.performSurfacePlacementNoTrace
+               |    |                com.android.server.wm.RootWindowContainer.performSurfacePlacement
+               |    |                com.android.server.wm.WindowSurfacePlacer.performSurfacePlacementLoop
+               |    |                com.android.server.wm.WindowSurfacePlacer.performSurfacePlacement
+               |    |                com.android.server.wm.WindowManagerService.postWindowRemoveCleanupLocked
+               |    |                com.android.server.wm.WindowState.removeImmediately
+               |    |                com.android.server.wm.WindowState.removeIfPossible
+               |    |                com.android.server.wm.WindowState.removeIfPossible
+               |    |                com.android.server.wm.WindowManagerService.removeWindow
+               |    |                com.android.server.wm.Session.remove
+               |    |                android.view.IWindowSession$Stub.onTransact
+               |    |                com.android.server.wm.Session.onTransact
+               |    |                android.os.Binder.execTransactInternal
+               |    |                android.os.Binder.execTransact
+               |    |                art_quick_invoke_stub
+               |    |                art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)
+               |    |                art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, std::__va_list)
+               |    |                art::JValue art::InvokeVirtualOrInterfaceWithVarArgs<_jmethodID*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, _jmethodID*, std::__va_list)
+               |    |                art::JNI<false>::CallBooleanMethodV(_JNIEnv*, _jobject*, _jmethodID*, std::__va_list)
+               |    |                _JNIEnv::CallBooleanMethod(_jobject*, _jmethodID*, ...)
+               |    |                JavaBBinder::onTransact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |                android::BBinder::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned int)
+               |    |                android::IPCThreadState::executeCommand(int)
+               |    |                android::IPCThreadState::getAndExecuteCommand()
+               |    |                android::IPCThreadState::joinThreadPool(bool)
+               |    |                android::PoolThread::threadLoop()
+               |    |                android::Thread::_threadLoop(void*)
+               |    |                android::AndroidRuntime::javaThreadShell(void*)
+               |    |                thread_data_t::trampoline(thread_data_t const*)
+               |    |                __pthread_start(void*)
+               |    |                __start_thread
+               |    |
+
+Empirical testing reveals that mProviders usually contains 9 entries,
+at which HashMap is 34% faster than ArrayMap for lookups and 57% faster
+[1] for insertions. The increased memory usage should be negligible at
+this size, so we can safely convert the map to a HashMap in order to
+improve performance in this hotpath.
+
+[1] https://docs.google.com/spreadsheets/d/136UJS2yVlZyPx30KDNgj4AWldkp9xbzIcWkLFj9RGgk/edit
+
+Test: simpleperf record -a; verify that InsetsStateController no longer
+      appears under ArrayMap.binarySearchHashes
+Change-Id: Ic08d4c3e56cf10b322eabc115de441c6c5f4a898
+---
+ .../server/wm/InsetsStateController.java      | 28 +++++++++----------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
+
+diff --git a/services/core/java/com/android/server/wm/InsetsStateController.java b/services/core/java/com/android/server/wm/InsetsStateController.java
+index c4ca8e364011..7a332fa38ba6 100644
+--- a/services/core/java/com/android/server/wm/InsetsStateController.java
++++ b/services/core/java/com/android/server/wm/InsetsStateController.java
+@@ -57,6 +57,8 @@ import com.android.server.inputmethod.InputMethodManagerInternal;
+ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ import java.util.function.Consumer;
++import java.util.HashMap;
++import java.util.Map;
+ 
+ /**
+  * Manages global window inset state in the system represented by {@link InsetsState}.
+@@ -67,7 +69,7 @@ class InsetsStateController {
+     private final InsetsState mState = new InsetsState();
+     private final DisplayContent mDisplayContent;
+ 
+-    private final ArrayMap<Integer, InsetsSourceProvider> mProviders = new ArrayMap<>();
++    private final HashMap<Integer, InsetsSourceProvider> mProviders = new HashMap<>();
+     private final ArrayMap<InsetsControlTarget, ArrayList<Integer>> mControlTargetTypeMap =
+             new ArrayMap<>();
+     private final SparseArray<InsetsControlTarget> mTypeControlTargetMap = new SparseArray<>();
+@@ -201,8 +203,7 @@ class InsetsStateController {
+ 
+             // IME needs different frames for certain cases (e.g. navigation bar in gesture nav).
+             if (type == ITYPE_IME) {
+-                for (int i = mProviders.size() - 1; i >= 0; i--) {
+-                    InsetsSourceProvider otherProvider = mProviders.valueAt(i);
++                for (InsetsSourceProvider otherProvider : mProviders.values()) {
+                     if (otherProvider.overridesImeFrame()) {
+                         InsetsSource override =
+                                 new InsetsSource(
+@@ -249,8 +250,7 @@ class InsetsStateController {
+     }
+ 
+     public void addProvidersToTransition() {
+-        for (int i = mProviders.size() - 1; i >= 0; --i) {
+-            final InsetsSourceProvider p = mProviders.valueAt(i);
++        for (final InsetsSourceProvider p : mProviders.values()) {
+             if (p == null) continue;
+             final WindowContainer wc = p.mWin;
+             if (wc == null) continue;
+@@ -288,8 +288,8 @@ class InsetsStateController {
+      */
+     void onPostLayout() {
+         Trace.traceBegin(TRACE_TAG_WINDOW_MANAGER, "ISC.onPostLayout");
+-        for (int i = mProviders.size() - 1; i >= 0; i--) {
+-            mProviders.valueAt(i).onPostLayout();
++        for (InsetsSourceProvider provider : mProviders.values()) {
++            provider.onPostLayout();
+         }
+         final ArrayList<WindowState> winInsetsChanged = mDisplayContent.mWinInsetsChanged;
+         if (!mLastState.equals(mState)) {
+@@ -379,8 +379,8 @@ class InsetsStateController {
+ 
+     void onInsetsModified(InsetsControlTarget caller) {
+         boolean changed = false;
+-        for (int i = mProviders.size() - 1; i >= 0; i--) {
+-            changed |= mProviders.valueAt(i).updateClientVisibility(caller);
++        for (InsetsSourceProvider provider : mProviders.values()) {
++            changed |= provider.updateClientVisibility(caller);
+         }
+         if (changed) {
+             notifyInsetsChanged();
+@@ -399,8 +399,7 @@ class InsetsStateController {
+     void computeSimulatedState(WindowState win, DisplayFrames displayFrames,
+             WindowFrames windowFrames) {
+         final InsetsState state = displayFrames.mInsetsState;
+-        for (int i = mProviders.size() - 1; i >= 0; i--) {
+-            final InsetsSourceProvider provider = mProviders.valueAt(i);
++        for (final InsetsSourceProvider provider : mProviders.values()) {
+             if (provider.mWin == win) {
+                 state.addSource(provider.createSimulatedSource(displayFrames, windowFrames));
+             }
+@@ -542,8 +541,7 @@ class InsetsStateController {
+             return;
+         }
+         mDisplayContent.mWmService.mAnimator.addAfterPrepareSurfacesRunnable(() -> {
+-            for (int i = mProviders.size() - 1; i >= 0; i--) {
+-                final InsetsSourceProvider provider = mProviders.valueAt(i);
++            for (final InsetsSourceProvider provider : mProviders.values()) {
+                 provider.onSurfaceTransactionApplied();
+             }
+             final ArraySet<InsetsControlTarget> newControlTargets = new ArraySet<>();
+@@ -582,8 +580,8 @@ class InsetsStateController {
+                     + mTypeControlTargetMap.valueAt(i));
+         }
+         pw.println(prefix + "InsetsSourceProviders:");
+-        for (int i = mProviders.size() - 1; i >= 0; i--) {
+-            mProviders.valueAt(i).dump(pw, prefix + "  ");
++        for (InsetsSourceProvider provider : mProviders.values()) {
++            provider.dump(pw, prefix + "  ");
+         }
+     }
+ }
+-- 
+2.36.1
+
