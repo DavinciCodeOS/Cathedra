@@ -1,0 +1,26 @@
+From dd5de378dc34bcc6333bf6ae1d5709a7ac05cf1b Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Wed, 27 Jul 2022 15:37:16 +0200
+Subject: [PATCH] vendor: Disable iorapd
+
+Change-Id: If5a363dd482ef80d1e99f088434a5987f5561fc6
+---
+ config/common.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/common.mk b/config/common.mk
+index c13dd140..8498d3ff 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -188,7 +188,7 @@ PRODUCT_PRODUCT_PROPERTIES += \
+ 
+ # IORap app launch prefetching using Perfetto traces and madvise
+ PRODUCT_PRODUCT_PROPERTIES += \
+-    ro.iorapd.enable=true
++    ro.iorapd.enable=false
+ 
+ # Pixel customization
+ TARGET_SUPPORTS_GOOGLE_RECORDER ?= true
+-- 
+2.37.1
+
