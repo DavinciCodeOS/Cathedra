@@ -37,11 +37,6 @@ RUN microdnf install -y \
 
 RUN curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > /usr/bin/repo && chmod +x /usr/bin/repo
 
-RUN useradd -u 1000 leonardo
+COPY entrypoint.sh /
 
-WORKDIR /build
-COPY . .
-RUN chown 1000:1000 -R /build
-
-USER leonardo
-CMD [ "bash", "build.sh" ]
+CMD ["/usr/bin/bash", "entrypoint.sh"]
