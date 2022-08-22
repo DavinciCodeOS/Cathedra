@@ -64,5 +64,8 @@
     ],
     "system/connectivity/wificond": [
         "0028-Remove-libutils.a-whole_static_lib-from-libwificond_.patch"
+    ],
+    "vendor/aosp": [
+        "0029-config-Use-adrian-clang-for-kernel-build-by-default.patch"
     ]
 }

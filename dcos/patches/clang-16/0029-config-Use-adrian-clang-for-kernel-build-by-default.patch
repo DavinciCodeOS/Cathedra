@@ -1,0 +1,26 @@
+From 62d8ca22fcc1736d80fc590cc545c7c3ae11902d Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Mon, 22 Aug 2022 23:16:22 +0300
+Subject: [PATCH] config: Use adrian-clang for kernel build by default
+
+Change-Id: I88126de65be7b43787897da2a9f2f22212c5df54
+---
+ config/BoardConfigKernel.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/BoardConfigKernel.mk b/config/BoardConfigKernel.mk
+index 6594a2c6..6da679e8 100644
+--- a/config/BoardConfigKernel.mk
++++ b/config/BoardConfigKernel.mk
+@@ -57,7 +57,7 @@ KERNEL_VERSION := $(shell grep -s "^VERSION = " $(TARGET_KERNEL_SOURCE)/Makefile
+ KERNEL_PATCHLEVEL := $(shell grep -s "^PATCHLEVEL = " $(TARGET_KERNEL_SOURCE)/Makefile | awk '{ print $$3 }')
+ TARGET_KERNEL_VERSION ?= $(shell echo $(KERNEL_VERSION)"."$(KERNEL_PATCHLEVEL))
+ 
+-CLANG_PREBUILTS := $(BUILD_TOP)/prebuilts/clang/host/$(HOST_PREBUILT_TAG)/clang-r416183b1
++CLANG_PREBUILTS := $(BUILD_TOP)/prebuilts/clang/host/$(HOST_PREBUILT_TAG)/adrian-clang-2
+ GCC_PREBUILTS := $(BUILD_TOP)/prebuilts/gcc/$(HOST_PREBUILT_TAG)
+ 
+ # x86 toolchain
+-- 
+2.37.2
+

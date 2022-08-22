@@ -1,7 +1,7 @@
-From d2fe72354903d44015f23d844cc595edc6bddcce Mon Sep 17 00:00:00 2001
+From bd709cbc99242a94c72663e50232cf3bed1f3666 Mon Sep 17 00:00:00 2001
 From: jhonboy121 <alfredmathew05@gmail.com>
 Date: Tue, 1 Feb 2022 19:54:15 +0530
-Subject: [PATCH 1/1] base: introduce app lock [1/4]
+Subject: [PATCH] base: introduce app lock [1/4]
 
 Signed-off-by: jhonboy121 <alfredmathew05@gmail.com>
 Change-Id: Ib2565f5707d31a5d9776b6751ff472f3a13420ba
@@ -287,7 +287,7 @@ index 000000000000..dc26abd431ca
 +    boolean isBiometricsAllowed(in int userId);
 +}
 diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
-index 32ea41b2c75f..6733aeea6745 100644
+index e727b78e8add..7975a5bf952c 100644
 --- a/core/java/android/app/SystemServiceRegistry.java
 +++ b/core/java/android/app/SystemServiceRegistry.java
 @@ -1470,6 +1470,17 @@ public final class SystemServiceRegistry {
@@ -309,7 +309,7 @@ index 32ea41b2c75f..6733aeea6745 100644
          try {
              // Note: the following functions need to be @SystemApis, once they become mainline
 diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
-index 7f2a740d3228..1c91ff79c131 100644
+index 913c3b8a33cd..f1b77f7ba7d8 100644
 --- a/core/java/android/content/Context.java
 +++ b/core/java/android/content/Context.java
 @@ -37,6 +37,7 @@ import android.annotation.TestApi;
@@ -320,7 +320,7 @@ index 7f2a740d3228..1c91ff79c131 100644
  import android.app.GameManager;
  import android.app.IApplicationThread;
  import android.app.IServiceConnection;
-@@ -5684,6 +5685,14 @@ public abstract class Context {
+@@ -5697,6 +5698,14 @@ public abstract class Context {
       */
      public static final String DISPLAY_HASH_SERVICE = "display_hash";
  
@@ -440,12 +440,12 @@ index 7fc157cb415f..84b8ffbde559 100644
      <attribution android:tag="GeofencingService" android:label="@string/geofencing_service"/>
      <!-- Attribution for Country Detector. -->
 diff --git a/core/res/res/values/custom_config.xml b/core/res/res/values/custom_config.xml
-index 9b5b7a6b38a9..7bb6cf91b839 100644
+index c19f1d8a3335..8fd7c6c72aa3 100644
 --- a/core/res/res/values/custom_config.xml
 +++ b/core/res/res/values/custom_config.xml
 @@ -196,4 +196,8 @@
      <!-- Whether devices suports in-display fingerprint when screen is off -->
-     <bool name="config_supportsScreenOffUdfps">true</bool>
+     <bool name="config_supportsScreenOffUdfps">false</bool>
  
 +    <!-- List of system apps that are allowed to be locked with app lock.
 +         Use with extreme caution. -->
@@ -2071,7 +2071,7 @@ index 0528b95d1a6e..3e0989876611 100644
 +        boolean isBubbleUpSuppressed, int userId);
  }
 diff --git a/services/core/java/com/android/server/notification/NotificationManagerService.java b/services/core/java/com/android/server/notification/NotificationManagerService.java
-index b60dba4167b5..a7fb77b5f5b3 100755
+index 0e4f3f71c1b1..124a0cad393f 100755
 --- a/services/core/java/com/android/server/notification/NotificationManagerService.java
 +++ b/services/core/java/com/android/server/notification/NotificationManagerService.java
 @@ -34,6 +34,7 @@ import static android.app.NotificationManager.ACTION_NOTIFICATION_CHANNEL_GROUP_
@@ -2082,15 +2082,15 @@ index b60dba4167b5..a7fb77b5f5b3 100755
  import static android.app.NotificationManager.EXTRA_AUTOMATIC_ZEN_RULE_ID;
  import static android.app.NotificationManager.EXTRA_AUTOMATIC_ZEN_RULE_STATUS;
  import static android.app.NotificationManager.IMPORTANCE_LOW;
-@@ -278,6 +279,7 @@ import com.android.internal.util.DumpUtils;
- import com.android.internal.util.Preconditions;
+@@ -280,6 +281,7 @@ import com.android.internal.util.Preconditions;
  import com.android.internal.util.XmlUtils;
  import com.android.internal.util.function.TriPredicate;
+ import com.android.internal.widget.LockPatternUtils;
 +import com.android.server.app.AppLockManagerServiceInternal;
  import com.android.server.DeviceIdleInternal;
  import com.android.server.EventLogTags;
  import com.android.server.IoThread;
-@@ -618,6 +620,9 @@ public class NotificationManagerService extends SystemService {
+@@ -620,6 +622,9 @@ public class NotificationManagerService extends SystemService {
      private InstanceIdSequence mNotificationInstanceIdSequence;
      private Set<String> mMsgPkgsAllowedAsConvos = new HashSet();
  
@@ -2100,7 +2100,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
      static class Archive {
          final SparseArray<Boolean> mEnabled;
          final int mBufferSize;
-@@ -2587,6 +2592,7 @@ public class NotificationManagerService extends SystemService {
+@@ -2645,6 +2650,7 @@ public class NotificationManagerService extends SystemService {
              migrateDefaultNAS();
          } else if (phase == SystemService.PHASE_ACTIVITY_MANAGER_READY) {
              mSnoozeHelper.scheduleRepostsForPersistedNotifications(System.currentTimeMillis());
@@ -2108,7 +2108,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
          }
      }
  
-@@ -3389,7 +3395,8 @@ public class NotificationManagerService extends SystemService {
+@@ -3447,7 +3453,8 @@ public class NotificationManagerService extends SystemService {
          public boolean areNotificationsEnabledForPackage(String pkg, int uid) {
              enforceSystemOrSystemUIOrSamePackage(pkg,
                      "Caller not system or systemui or same package");
@@ -2118,7 +2118,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
                  getContext().enforceCallingPermission(
                          android.Manifest.permission.INTERACT_ACROSS_USERS,
                          "canNotifyAsPackage for uid " + uid);
-@@ -4163,7 +4170,8 @@ public class NotificationManagerService extends SystemService {
+@@ -4221,7 +4228,8 @@ public class NotificationManagerService extends SystemService {
                              sbn.getOpPkg(),
                              sbn.getId(), sbn.getTag(), sbn.getUid(), sbn.getInitialPid(),
                              notification,
@@ -2128,7 +2128,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
                  }
              }
              return null;
-@@ -5649,6 +5657,8 @@ public class NotificationManagerService extends SystemService {
+@@ -5707,6 +5715,8 @@ public class NotificationManagerService extends SystemService {
                              0, appIntent, PendingIntent.FLAG_IMMUTABLE, null,
                              pkg, appInfo.uid);
                  }
@@ -2137,7 +2137,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
                  final StatusBarNotification summarySbn =
                          new StatusBarNotification(adjustedSbn.getPackageName(),
                                  adjustedSbn.getOpPkg(),
-@@ -5656,12 +5666,15 @@ public class NotificationManagerService extends SystemService {
+@@ -5714,12 +5724,15 @@ public class NotificationManagerService extends SystemService {
                                  GroupHelper.AUTOGROUP_KEY, adjustedSbn.getUid(),
                                  adjustedSbn.getInitialPid(), summaryNotification,
                                  adjustedSbn.getUser(), GroupHelper.AUTOGROUP_KEY,
@@ -2154,7 +2154,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
              }
              if (summaryRecord != null && checkDisqualifyingFeatures(userId, MY_UID,
                      summaryRecord.getSbn().getId(), summaryRecord.getSbn().getTag(), summaryRecord,
-@@ -6033,6 +6046,33 @@ public class NotificationManagerService extends SystemService {
+@@ -6091,6 +6104,33 @@ public class NotificationManagerService extends SystemService {
              sbn.getNotification().flags =
                      (r.mOriginalFlags & ~FLAG_FOREGROUND_SERVICE);
          }
@@ -2188,7 +2188,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
      };
  
      void cancelNotificationInternal(String pkg, String opPkg, int callingUid, int callingPid,
-@@ -6143,9 +6183,11 @@ public class NotificationManagerService extends SystemService {
+@@ -6201,9 +6241,11 @@ public class NotificationManagerService extends SystemService {
  
          mUsageStats.registerEnqueuedByApp(pkg);
  
@@ -2201,7 +2201,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
  
          // setup local book-keeping
          String channelId = notification.getChannelId();
-@@ -6185,6 +6227,8 @@ public class NotificationManagerService extends SystemService {
+@@ -6243,6 +6285,8 @@ public class NotificationManagerService extends SystemService {
          r.setPostSilently(postSilently);
          r.setFlagBubbleRemoved(false);
          r.setPkgAllowedAsConvo(mMsgPkgsAllowedAsConvos.contains(pkg));
@@ -2210,7 +2210,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
  
          if ((notification.flags & Notification.FLAG_FOREGROUND_SERVICE) != 0) {
              final boolean fgServiceShown = channel.isFgServiceShown();
-@@ -8040,13 +8084,15 @@ public class NotificationManagerService extends SystemService {
+@@ -8098,13 +8142,15 @@ public class NotificationManagerService extends SystemService {
          float mRankingScore;
          boolean mIsConversation;
  
@@ -2227,7 +2227,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
              mPosition = position;
              mVisibility = visibility;
              mShowBadge = showBadge;
-@@ -8063,6 +8109,7 @@ public class NotificationManagerService extends SystemService {
+@@ -8121,6 +8167,7 @@ public class NotificationManagerService extends SystemService {
              mImportance = importance;
              mRankingScore = rankingScore;
              mIsConversation = isConversation;
@@ -2235,7 +2235,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
          }
  
          // Returns whether the provided NotificationRecord differs from the cached data in any way.
-@@ -8081,7 +8128,8 @@ public class NotificationManagerService extends SystemService {
+@@ -8139,7 +8186,8 @@ public class NotificationManagerService extends SystemService {
                      || !Objects.equals(mSuppressVisually, r.getSuppressedVisualEffects())
                      || !Objects.equals(mSystemSmartActions, r.getSystemGeneratedSmartActions())
                      || !Objects.equals(mSmartReplies, r.getSmartReplies())
@@ -2245,7 +2245,7 @@ index b60dba4167b5..a7fb77b5f5b3 100755
          }
  
          // Returns whether the NotificationRecord has a change from this data for which we should
-@@ -8132,7 +8180,8 @@ public class NotificationManagerService extends SystemService {
+@@ -8190,7 +8238,8 @@ public class NotificationManagerService extends SystemService {
                          r.getSmartReplies(),
                          r.getImportance(),
                          r.getRankingScore(),
@@ -2493,5 +2493,5 @@ index 31ce27e89da8..09c896390c7f 100644
          mSystemServiceManager.startBootPhase(t, SystemService.PHASE_DEVICE_SPECIFIC_SERVICES_READY);
          t.traceEnd();
 -- 
-2.36.1
+2.37.2
 
