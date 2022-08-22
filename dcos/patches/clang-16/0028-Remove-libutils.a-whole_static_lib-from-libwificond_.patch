@@ -1,0 +1,37 @@
+From 0a271e44ba223dbc1b7e6c9cf85a921c137866ef Mon Sep 17 00:00:00 2001
+From: Pirama Arumuga Nainar <pirama@google.com>
+Date: Thu, 26 Aug 2021 10:45:26 -0700
+Subject: [PATCH] Remove libutils.a whole_static_lib from
+ libwificond_event_loop.a
+
+Bug: http://b/197965342
+
+All users of this library depend on libutils.so.  Having this dependency
+breaks build of wificond binary with upstream LLD.  This is because
+wificond depends on libbinder which has undefined symbols provided by
+libutils.so.  If libutils.a is included in the link command, the linker
+tries to redefine these undefined symbols by fetching symbols from
+libutils.a.
+
+Test: build with aosp/1809741 which has lld with the above behavior.
+Test: mmma system/connectivity/wificond
+Change-Id: I0b40d3ae8864ae22f088935a3d7168486d833aa9
+---
+ Android.bp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Android.bp b/Android.bp
+index e417aaf..bdb48b0 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -152,7 +152,6 @@ cc_library_static {
+     whole_static_libs: [
+         "liblog",
+         "libbase",
+-        "libutils",
+     ],
+ 
+ }
+-- 
+2.37.1
+

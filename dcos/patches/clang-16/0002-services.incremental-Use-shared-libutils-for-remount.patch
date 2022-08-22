@@ -1,0 +1,43 @@
+From ceb66ebbc9d70544d830fe800d048158b22c61b5 Mon Sep 17 00:00:00 2001
+From: Pirama Arumuga Nainar <pirama@google.com>
+Date: Wed, 25 Aug 2021 22:23:41 -0700
+Subject: [PATCH] [services.incremental] Use shared libutils for remount
+
+Bug: http://b/197965342
+
+services.incremental depends on libbinder.so, which already depends on
+libutils.so.  When linking services.incremental with libutils.a, the
+linker tries to open objects from libutils.a to redefine undefined
+symbols in libbinder.so.  This causes a linker failure with upstream
+LLD.  Switching to shared libutils.so instead doesn't increase the
+dependency closure for services.incremental.
+
+Test: build with aosp/1809741 which has lld with the above behavior.
+Change-Id: I2735461ae64ef2e4c0afc170f7b765c1b5b9432e
+---
+ services/incremental/Android.bp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/incremental/Android.bp b/services/incremental/Android.bp
+index 0bd737bec460..957d7c352bdf 100644
+--- a/services/incremental/Android.bp
++++ b/services/incremental/Android.bp
+@@ -65,7 +65,6 @@ cc_defaults {
+         "libincremental_manager_aidl-cpp",
+         "libprotobuf-cpp-lite",
+         "service.incremental.proto",
+-        "libutils",
+         "libvold_binder",
+         "libc++fs",
+         "libziparchive_for_incfs",
+@@ -78,6 +77,7 @@ cc_defaults {
+         "libincfs",
+         "liblog",
+         "libpermission",
++        "libutils",
+         "libz",
+     ],
+ }
+-- 
+2.37.1
+

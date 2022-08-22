@@ -1,0 +1,162 @@
+From fefbc5ac8a895f4aec176da19b831dfe67bad2e5 Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Fri, 1 Jul 2022 22:07:39 +0300
+Subject: [PATCH] art: Remove deprecated and redundant declarations
+
+Change-Id: Ie89743b1b23d5b91407ae14f9892922aa4743bd3
+---
+ dexlayout/dex_writer.cc                | 2 --
+ libartbase/base/hiddenapi_flags.cc     | 4 ----
+ libdexfile/dex/compact_dex_file.cc     | 3 ---
+ libdexfile/dex/compact_offset_table.cc | 2 --
+ runtime/base/timing_logger.cc          | 2 --
+ runtime/gc/accounting/card_table.cc    | 5 -----
+ runtime/index_bss_mapping.cc           | 2 --
+ runtime/mirror/class.cc                | 4 ----
+ runtime/oat.cc                         | 3 ---
+ runtime/vdex_file.cc                   | 4 ----
+ 10 files changed, 31 deletions(-)
+
+diff --git a/dexlayout/dex_writer.cc b/dexlayout/dex_writer.cc
+index 7f05ae89fb..e7473c0a60 100644
+--- a/dexlayout/dex_writer.cc
++++ b/dexlayout/dex_writer.cc
+@@ -30,8 +30,6 @@
+ 
+ namespace art {
+ 
+-constexpr uint32_t DexWriter::kDataSectionAlignment;
+-
+ static size_t EncodeIntValue(int32_t value, uint8_t* buffer) {
+   size_t length = 0;
+   if (value >= 0) {
+diff --git a/libartbase/base/hiddenapi_flags.cc b/libartbase/base/hiddenapi_flags.cc
+index ea57cb7c5e..4734c9c545 100644
+--- a/libartbase/base/hiddenapi_flags.cc
++++ b/libartbase/base/hiddenapi_flags.cc
+@@ -19,9 +19,5 @@
+ namespace art {
+ namespace hiddenapi {
+ 
+-constexpr const char* ApiList::kValueNames[ApiList::kValueCount];
+-constexpr const char* ApiList::kDomainApiNames[ApiList::kDomainApiCount];
+-constexpr SdkVersion ApiList::kMaxSdkVersions[ApiList::kValueCount];
+-
+ }  // namespace hiddenapi
+ }  // namespace art
+diff --git a/libdexfile/dex/compact_dex_file.cc b/libdexfile/dex/compact_dex_file.cc
+index a5044aad7e..205b829393 100644
+--- a/libdexfile/dex/compact_dex_file.cc
++++ b/libdexfile/dex/compact_dex_file.cc
+@@ -22,9 +22,6 @@
+ 
+ namespace art {
+ 
+-constexpr uint8_t CompactDexFile::kDexMagic[kDexMagicSize];
+-constexpr uint8_t CompactDexFile::kDexMagicVersion[];
+-
+ void CompactDexFile::WriteMagic(uint8_t* magic) {
+   std::copy_n(kDexMagic, kDexMagicSize, magic);
+ }
+diff --git a/libdexfile/dex/compact_offset_table.cc b/libdexfile/dex/compact_offset_table.cc
+index 8601b19613..deec124193 100644
+--- a/libdexfile/dex/compact_offset_table.cc
++++ b/libdexfile/dex/compact_offset_table.cc
+@@ -21,8 +21,6 @@
+ 
+ namespace art {
+ 
+-constexpr size_t CompactOffsetTable::kElementsPerIndex;
+-
+ CompactOffsetTable::Accessor::Accessor(const uint8_t* data_begin,
+                                        uint32_t minimum_offset,
+                                        uint32_t table_offset)
+diff --git a/runtime/base/timing_logger.cc b/runtime/base/timing_logger.cc
+index abf4f58b2c..c39b44e93d 100644
+--- a/runtime/base/timing_logger.cc
++++ b/runtime/base/timing_logger.cc
+@@ -33,8 +33,6 @@
+ 
+ namespace art {
+ 
+-constexpr size_t TimingLogger::kIndexNotFound;
+-
+ CumulativeLogger::CumulativeLogger(const std::string& name)
+     : name_(name),
+       lock_name_("CumulativeLoggerLock" + name),
+diff --git a/runtime/gc/accounting/card_table.cc b/runtime/gc/accounting/card_table.cc
+index fdf1615f5e..b8b328c795 100644
+--- a/runtime/gc/accounting/card_table.cc
++++ b/runtime/gc/accounting/card_table.cc
+@@ -31,11 +31,6 @@ namespace art {
+ namespace gc {
+ namespace accounting {
+ 
+-constexpr size_t CardTable::kCardShift;
+-constexpr size_t CardTable::kCardSize;
+-constexpr uint8_t CardTable::kCardClean;
+-constexpr uint8_t CardTable::kCardDirty;
+-
+ /*
+  * Maintain a card table from the write barrier. All writes of
+  * non-null values to heap addresses should go through an entry in
+diff --git a/runtime/index_bss_mapping.cc b/runtime/index_bss_mapping.cc
+index 8d9d8cfe63..f6e083d613 100644
+--- a/runtime/index_bss_mapping.cc
++++ b/runtime/index_bss_mapping.cc
+@@ -44,8 +44,6 @@ size_t IndexBssMappingEntry::GetBssOffset(size_t index_bits,
+   }
+ }
+ 
+-constexpr size_t IndexBssMappingLookup::npos;
+-
+ size_t IndexBssMappingLookup::GetBssOffset(const IndexBssMapping* mapping,
+                                            uint32_t index,
+                                            uint32_t number_of_indexes,
+diff --git a/runtime/mirror/class.cc b/runtime/mirror/class.cc
+index 3f9d41c659..ffde76bb4c 100644
+--- a/runtime/mirror/class.cc
++++ b/runtime/mirror/class.cc
+@@ -57,10 +57,6 @@
+ 
+ namespace art {
+ 
+-// TODO: move to own CC file?
+-constexpr size_t BitString::kBitSizeAtPosition[BitString::kCapacity];
+-constexpr size_t BitString::kCapacity;
+-
+ namespace mirror {
+ 
+ using android::base::StringPrintf;
+diff --git a/runtime/oat.cc b/runtime/oat.cc
+index 3698ddfaed..3c3506978f 100644
+--- a/runtime/oat.cc
++++ b/runtime/oat.cc
+@@ -29,9 +29,6 @@ namespace art {
+ 
+ using android::base::StringPrintf;
+ 
+-constexpr const char OatHeader::kTrueValue[];
+-constexpr const char OatHeader::kFalseValue[];
+-
+ static size_t ComputeOatHeaderSize(const SafeMap<std::string, std::string>* variable_data) {
+   size_t estimate = 0U;
+   if (variable_data != nullptr) {
+diff --git a/runtime/vdex_file.cc b/runtime/vdex_file.cc
+index 967167961c..d7db2e63e4 100644
+--- a/runtime/vdex_file.cc
++++ b/runtime/vdex_file.cc
+@@ -44,10 +44,6 @@
+ 
+ namespace art {
+ 
+-constexpr uint8_t VdexFile::VdexFileHeader::kVdexInvalidMagic[4];
+-constexpr uint8_t VdexFile::VdexFileHeader::kVdexMagic[4];
+-constexpr uint8_t VdexFile::VdexFileHeader::kVdexVersion[4];
+-
+ bool VdexFile::VdexFileHeader::IsMagicValid() const {
+   return (memcmp(magic_, kVdexMagic, sizeof(kVdexMagic)) == 0);
+ }
+-- 
+2.37.1
+

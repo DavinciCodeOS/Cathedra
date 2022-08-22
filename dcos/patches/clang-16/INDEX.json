@@ -1,0 +1,68 @@
+{
+    "frameworks/base": [
+        "0001-base-Clang-15-backports.patch",
+        "0002-services.incremental-Use-shared-libutils-for-remount.patch"
+    ],
+    "build/soong": [
+        "0003-soong-Clang-14-15-16-Rust-1.63-backports.patch"
+    ],
+    "bionic": [
+        "0004-Reland-Use-the-dynamic-table-instead-of-__rela-_iplt.patch"
+    ],
+    "system/extras": [
+        "0005-libprofcollectd-Fix-Rust-1.62-build-errors.patch"
+    ],
+    "prebuilts/clang/host/linux-x86": [
+        "0006-No-scudo-prebuilts-since-clang-r437112.patch"
+    ],
+    "build/make": [
+        "0007-make-Change-llvm-ar-format-to-be-format.patch"
+    ],
+    "external/harfbuzz_ng": [
+        "0008-Do-not-use-pragma-diagnostics-as-a-workaround.patch"
+    ],
+    "system/netd": [
+        "0009-netd-Clang-15-backports.patch"
+    ],
+    "external/mdnsresponder": [
+        "0010-Increase-keyword-buffer-size-to-11-since-we-read-up-.patch"
+    ],
+    "system/apex": [
+        "0011-Remove-redundant-using-statement.patch"
+    ],
+    "frameworks/native": [
+        "0012-libbinder-Remove-redundant-using-android.patch",
+        "0013-Fix-error-for-compiler-update.patch",
+        "0014-binder-Fix-new-Rust-compiler-errors.patch"
+    ],
+    "frameworks/av": [
+        "0015-MediaMetrics-fix-error-for-compiler-update.patch",
+        "0016-Suppress-ordered-compare-function-pointers-warning.patch"
+    ],
+    "art": [
+        "0017-Switch-to-an-assembler-macro-for-CFI_RESTORE_STATE_A.patch",
+        "0018-Suppress-three-counts-of-compiler-warnings-for-frame.patch",
+        "0019-art-Remove-deprecated-and-redundant-declarations.patch"
+    ],
+    "packages/modules/DnsResolver": [
+        "0020-Sanitize-buffer-alignment-macros.patch",
+        "0021-DnsResolver-Remove-redundant-using-statements.patch"
+    ],
+    "prebuilts/rust": [
+        "0022-rust-Backport-to-old-soong.patch"
+    ],
+    "packages/modules/Connectivity": [
+        "0023-Fix-deprecated-error-limit-linker-flag.patch"
+    ],
+    "system/bt": [
+        "0024-bt-Add-missing-dependencies-on-libbase.patch",
+        "0025-floss-Remove-noop-std-move-task_.patch",
+        "0026-bt-Fix-warnings-in-preparation-for-Rust-1.63.0.patch"
+    ],
+    "system/security": [
+        "0027-Fix-warnings-in-preparation-for-Rust-1.63.0.patch"
+    ],
+    "system/connectivity/wificond": [
+        "0028-Remove-libutils.a-whole_static_lib-from-libwificond_.patch"
+    ]
+}

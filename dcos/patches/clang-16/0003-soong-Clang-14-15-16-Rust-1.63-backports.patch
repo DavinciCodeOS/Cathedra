@@ -1,7 +1,7 @@
-From eb6e05e7a609a9c6985bdec326a625e712cca167 Mon Sep 17 00:00:00 2001
+From 5ea4b05b2201a5e39d79308f3a6ffb42d09e7c4f Mon Sep 17 00:00:00 2001
 From: Jens Reidel <adrian@travitia.xyz>
 Date: Sun, 5 Jun 2022 15:53:01 +0300
-Subject: [PATCH] soong: Clang 14/15, Rust 1.62 backports
+Subject: [PATCH] soong: Clang 14/15/16, Rust 1.63 backports
 
 Change-Id: I991a34020a15ac1eaad1f8da800b82bbc20d6668
 ---
@@ -10,7 +10,7 @@ Change-Id: I991a34020a15ac1eaad1f8da800b82bbc20d6668
  cc/builder.go             | 10 ++++-
  cc/cc.go                  |  2 +-
  cc/config/clang.go        | 21 ++++------
- cc/config/global.go       | 48 ++++++++++++++++++++--
+ cc/config/global.go       | 51 +++++++++++++++++++++--
  cc/config/tidy.go         | 31 +++++++++-----
  cc/makevars.go            |  1 +
  cc/ndk_library.go         |  6 +++
@@ -24,7 +24,7 @@ Change-Id: I991a34020a15ac1eaad1f8da800b82bbc20d6668
  rust/rust.go              | 17 ++++++--
  rust/testing.go           | 76 ++++------------------------------
  rust/toolchain_library.go | 85 +++++++++++++++++++++++++++++++++++++++
- 19 files changed, 272 insertions(+), 111 deletions(-)
+ 19 files changed, 275 insertions(+), 111 deletions(-)
  create mode 100644 rust/toolchain_library.go
 
 diff --git a/android/paths.go b/android/paths.go
@@ -197,7 +197,7 @@ index 156909876..e3bf868a5 100644
  }
  
 diff --git a/cc/config/global.go b/cc/config/global.go
-index ae731b203..14d1596f8 100644
+index ae731b203..112b6a620 100644
 --- a/cc/config/global.go
 +++ b/cc/config/global.go
 @@ -123,7 +123,6 @@ var (
@@ -208,7 +208,7 @@ index ae731b203..14d1596f8 100644
  		"-Werror=xor-used-as-pow",
  		// http://b/161386391 for -Wno-void-pointer-to-enum-cast
  		"-Wno-void-pointer-to-enum-cast",
-@@ -132,6 +131,48 @@ var (
+@@ -132,6 +131,51 @@ var (
  		// http://b/161386391 for -Wno-pointer-to-int-cast
  		"-Wno-pointer-to-int-cast",
  		"-Werror=fortify-source",
@@ -246,6 +246,9 @@ index ae731b203..14d1596f8 100644
 +		"-Wno-error=unqualified-std-cast-call",
 +		"-Wno-error=deprecated-non-prototype",
 +		"-Wno-error=bitwise-instead-of-logical",
++		"-Wno-error=array-parameter",
++		"-Wno-error=deprecated-builtins",
++		"-Wno-error=enum-conversion",
 +	}
 +
 +	noOverrideExternalGlobalCflags = []string{
@@ -257,18 +260,18 @@ index ae731b203..14d1596f8 100644
  	}
  
  	IllegalFlags = []string{
-@@ -145,8 +186,8 @@ var (
+@@ -145,8 +189,8 @@ var (
  
  	// prebuilts/clang default settings.
  	ClangDefaultBase         = "prebuilts/clang/host"
 -	ClangDefaultVersion      = "clang-r416183b1"
 -	ClangDefaultShortVersion = "12.0.7"
-+	ClangDefaultVersion      = "adrian-clang-2"
-+	ClangDefaultShortVersion = "15.0.0"
++	ClangDefaultVersion      = "adrian-clang"
++	ClangDefaultShortVersion = "16.0.0"
  
  	// Directories with warnings from Android.bp files.
  	WarningAllowedProjects = []string{
-@@ -220,6 +261,7 @@ func init() {
+@@ -220,6 +264,7 @@ func init() {
  
  	staticVariableExportedToBazel("HostClangGlobalCflags", ClangFilterUnknownCflags(hostGlobalCflags))
  	staticVariableExportedToBazel("NoOverrideClangGlobalCflags", append(ClangFilterUnknownCflags(noOverrideGlobalCflags), "${ClangExtraNoOverrideCflags}"))
@@ -428,7 +431,7 @@ index 1598ebf9a..322cd3bea 100644
  			deps.Stdlibs = append(deps.Stdlibs, stdlib)
  		}
 diff --git a/rust/config/global.go b/rust/config/global.go
-index 1b56237b3..6e2e516ea 100644
+index 1b56237b3..4b292dcf9 100644
 --- a/rust/config/global.go
 +++ b/rust/config/global.go
 @@ -24,7 +24,7 @@ import (
@@ -436,7 +439,7 @@ index 1b56237b3..6e2e516ea 100644
  
  var (
 -	RustDefaultVersion = "1.51.0"
-+	RustDefaultVersion = "1.62.0"
++	RustDefaultVersion = "1.63.0"
  	RustDefaultBase    = "prebuilts/rust/"
  	DefaultEdition     = "2018"
  	Stdlibs            = []string{
@@ -811,5 +814,5 @@ index 000000000..f9431eb51
 +	return ctx.AConfig().GetenvWithDefault("RUST_PREBUILTS_VERSION", config.RustDefaultVersion)
 +}
 -- 
-2.36.1
+2.37.2
 

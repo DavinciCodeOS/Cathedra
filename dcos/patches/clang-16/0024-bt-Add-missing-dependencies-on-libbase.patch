@@ -1,0 +1,51 @@
+From 32f0e9350e5e2ae91c3fe7a75e82152579a5b1c8 Mon Sep 17 00:00:00 2001
+From: Jens Reidel <adrian@travitia.xyz>
+Date: Wed, 3 Aug 2022 00:28:31 +0300
+Subject: [PATCH] bt: Add missing dependencies on libbase
+
+Change-Id: I9f7623dcd4e3c7c5889302b9d2ef6257afd27ecd
+---
+ audio_a2dp_hw/Android.bp | 1 +
+ bta/Android.bp           | 1 +
+ main/Android.bp          | 1 +
+ 3 files changed, 3 insertions(+)
+
+diff --git a/audio_a2dp_hw/Android.bp b/audio_a2dp_hw/Android.bp
+index 708e1a609..c22d07cff 100644
+--- a/audio_a2dp_hw/Android.bp
++++ b/audio_a2dp_hw/Android.bp
+@@ -28,6 +28,7 @@ cc_library {
+         "src/audio_a2dp_hw_utils.cc",
+     ],
+     shared_libs: [
++        "libbase",
+         "liblog",
+         "libcutils",
+     ],
+diff --git a/bta/Android.bp b/bta/Android.bp
+index 8e0d9bf9a..0a50164ab 100644
+--- a/bta/Android.bp
++++ b/bta/Android.bp
+@@ -197,6 +197,7 @@ cc_test {
+         "test/bta_gatt_test.cc",
+     ],
+     shared_libs: [
++        "libbase",
+         "libcrypto",
+         "libflatbuffers-cpp",
+         "liblog",
+diff --git a/main/Android.bp b/main/Android.bp
+index 67cb3eca4..7b98d39cb 100644
+--- a/main/Android.bp
++++ b/main/Android.bp
+@@ -99,6 +99,7 @@ cc_library_shared {
+         "android.hardware.bluetooth.audio@2.1",
+         "android.hardware.bluetooth@1.0",
+         "android.hardware.bluetooth@1.1",
++        "libbase",
+         "libbinder_ndk",
+         "libcrypto",
+         "libcutils",
+-- 
+2.37.1
+

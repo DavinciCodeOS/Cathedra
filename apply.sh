@@ -11,25 +11,24 @@ case "$PATCH_TYPE" in
 esac
 
 if [ "$PATCH_TYPE" = "dcos" ] ; then
-	echo "[i] Fetching latest Adrian Clang build for the kernel build..."
-	# fresh kernel building clang toolchain by Adrian
+	echo "[i] Fetching latest Adrian Clang build for the ROM build..."
+	# adrian-clang is used for building AOSP
 	rm -rf prebuilts/clang/host/linux-x86/adrian-clang
 	mkdir -p prebuilts/clang/host/linux-x86/adrian-clang
 	cd prebuilts/clang/host/linux-x86/adrian-clang
-	# in case of automated builds, please host a mirror
 	curl https://ftp.travitia.xyz/clang/clang-latest.tar.xz | tar -xJ
 	cd $BASE_BUILD_DIR
-	# Used to build the ROM
+	# adrian-clang-2 is used for building the kernel
 	rm -rf prebuilts/clang/host/linux-x86/adrian-clang-2
 	mkdir -p prebuilts/clang/host/linux-x86/adrian-clang-2
 	cd prebuilts/clang/host/linux-x86/adrian-clang-2
-	curl https://ftp.travitia.xyz/clang/clang-r459371.tar.xz | tar -xJ
+	curl https://ftp.travitia.xyz/clang/clang-abce7acebd4c06c977bc4bd79170697f1122bc5e.tar.xz | tar -xJ
 	cd $BASE_BUILD_DIR
 
 	echo "[i] Fetching is done. Patching sources..."
 
 	$CATHEDRA_PATH/apply.py $CATHEDRA_PATH/dcos/patches
-	$CATHEDRA_PATH/apply.py $CATHEDRA_PATH/dcos/patches/clang-15
+	$CATHEDRA_PATH/apply.py $CATHEDRA_PATH/dcos/patches/clang-16
 
 	echo "[i] Installing boot animation..."
 	cp -f $CATHEDRA_PATH/dcos/assets/bootanimation.zip vendor/aosp/bootanimation/bootanimation_1080.zip
