@@ -16,7 +16,8 @@ set -e
 BUILDER_USER="leonardo"
 BUILDER_EMAIL="not@existing.org"
 CACHE_SIZE="100GB"
-BUILD_TYPE="user"
+DEVICE=${DEVICE:="davinci"}
+BUILD_TYPE=${BUILD_TYPE:="user"}
 THREAD_COUNT=$(nproc --all)
 
 echo "[i] Setting up ccache..."
@@ -35,10 +36,10 @@ echo "[i] Setting build environment..."
 
 source build/envsetup.sh
 
-lunch aosp_davinci-$BUILD_TYPE
+lunch aosp_$DEVICE-$BUILD_TYPE
 
 echo "[i] Regenerating ABI reference dumps for O3 build..."
-development/vndk/tools/header-checker/utils/create_reference_dumps.py -products aosp_davinci --build-variant $BUILD_TYPE
+development/vndk/tools/header-checker/utils/create_reference_dumps.py -products aosp_$DEVICE --build-variant $BUILD_TYPE
 
 echo "[i] Starting build process..."
 
