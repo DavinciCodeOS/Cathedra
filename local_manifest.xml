@@ -15,11 +15,21 @@
    <remove-project name="platform/prebuilts/rust" />
 
    <!-- Add new repositories -->
+   <!-- Davinci -->
    <project path="device/xiaomi/davinci" name="DavinciCodeOS/device_xiaomi_davinci" remote="dcos-github" revision="12" />
    <project path="kernel/xiaomi/sm6150" name="DavinciCodeOS/kernel_xiaomi_sm6150" remote="dcos-github" revision="12.1" />
    <project path="device/xiaomi/sm6150-common" name="DavinciCodeOS/android_device_xiaomi_sm6150-common" remote="dcos-github" revision="12" />
    <project path="vendor/xiaomi" name="DavinciCodeOS/android_vendor_xiaomi" remote="dcos-github" revision="12" />
+
+   <!-- Beryllium -->
+   <project path="device/xiaomi/sdm845-common" name="DavinciCodeOS/device_xiaomi_sdm845-common" remote="dcos-github" revision="twelve" />
+   <project path="kernel/xiaomi/beryllium" name="DavinciCodeOS/kernel_xiaomi_polaris" remote="dcos-github" revision="twelve" />
+   <project path="vendor/xiaomi/beryllium" name="DavinciCodeOS/vendor_xiaomi_beryllium" remote="dcos-github" revision="eleven" />
+   <project path="vendor/xiaomi/sdm845-common" name="DavinciCodeOS/vendor_xiaomi_sdm845-common" remote="dcos-github" revision="twelve" />
+   <project path="vendor/xiaomi-firmware" name="DavinciCodeOS/vendor_xiaomi-firmware" remote="dcos-gitlab" revision="twelve" />
+
    <project path="hardware/xiaomi" name="DavinciCodeOS/android_hardware_xiaomi" remote="dcos-github" revision="lineage-19.1" />
+
    <project path="external/zlib-ng" name="DavinciCodeOS/android_external_zlib-ng" remote="dcos-github" revision="sc-qpr3" />
    <project path="external/erofs-utils" name="DavinciCodeOS/platform_external_erofs-utils" remote="dcos-github" revision="master" />
    <project path="packages/apps/Updates" name="DavinciCodeOS/packages_apps_Updates" remote="dcos-github" revision="twelve" />
