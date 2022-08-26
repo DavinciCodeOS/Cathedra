@@ -1,0 +1,125 @@
+From 683937e14c062e6cd531c9c5aa6fc611491d10f5 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Thu, 25 Aug 2022 12:39:54 +0200
+Subject: [PATCH 1/1] Revert "Revert "Allow toggling screen off fod [2/2]""
+
+This reverts commit 80c530f6b4b07a5545d9a52e760a191f6d4d522f.
+
+Change-Id: I3791801786ab04d0f3111bb04dc3569f288ee66e
+---
+ res/values/custom_strings.xml                 |  5 ++
+ res/xml/display_settings.xml                  |  8 +++
+ .../UdfpsGesturePreferenceController.java     | 68 +++++++++++++++++++
+ 3 files changed, 81 insertions(+)
+ create mode 100644 src/com/android/settings/security/UdfpsGesturePreferenceController.java
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 42ce492079..b1dde5cee1 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -139,4 +139,9 @@
+     <!-- Pocket judge -->
+     <string name="pocket_judge_title">Pocket detection</string>
+     <string name="pocket_judge_summary">Block screen and button inputs when device is in pocket</string>
++
++    <!-- Screen off FOD -->
++    <string name="screen_off_fod_title">Screen off FOD</string>
++    <string name="screen_off_fod_summary">Keep FOD enabled when the screen is off</string>
++
+ </resources>
+diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
+index 712c310205..9bbdef36df 100644
+--- a/res/xml/display_settings.xml
++++ b/res/xml/display_settings.xml
+@@ -221,6 +221,14 @@
+             android:key="vr_display_pref"
+             android:title="@string/display_vr_pref_title" />
+ 
++        <!-- Screen OFF FOD -->
++        <com.android.settings.custom.preference.SecureSettingSwitchPreference
++            android:key="screen_off_udfps_enabled"
++            android:title="@string/screen_off_fod_title"
++            android:summary="@string/screen_off_fod_summary"
++            android:defaultValue="true"
++            settings:controller="com.android.settings.security.UdfpsGesturePreferenceController" />
++
+     </PreferenceCategory>
+ 
+ </PreferenceScreen>
+diff --git a/src/com/android/settings/security/UdfpsGesturePreferenceController.java b/src/com/android/settings/security/UdfpsGesturePreferenceController.java
+new file mode 100644
+index 0000000000..26e70c4c20
+--- /dev/null
++++ b/src/com/android/settings/security/UdfpsGesturePreferenceController.java
+@@ -0,0 +1,68 @@
++/*
++ * Copyright (C) 2022 PixelExperience
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License
++ */
++package com.android.settings.security;
++import android.content.Context;
++import android.hardware.fingerprint.FingerprintManager;
++import android.hardware.fingerprint.FingerprintSensorPropertiesInternal;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settings.Utils;
++
++import java.util.List;
++
++public class UdfpsGesturePreferenceController extends BasePreferenceController {
++    public static final String KEY = "screen_off_udfps_enabled";
++    private FingerprintManager mFingerprintManager;
++    private List<FingerprintSensorPropertiesInternal> mSensorProperties;
++
++    public UdfpsGesturePreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++        mFingerprintManager = Utils.getFingerprintManagerOrNull(context);
++
++        if (mFingerprintManager != null)
++            mSensorProperties = mFingerprintManager.getSensorPropertiesInternal();
++
++    }
++    public UdfpsGesturePreferenceController(Context context) {
++        this(context, KEY);
++    }
++
++    private boolean isUdfps() {
++        if (mSensorProperties != null){
++            for (FingerprintSensorPropertiesInternal prop : mSensorProperties) {
++                if (prop.isAnyUdfpsType()) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        if (!isUdfps()){
++            return UNSUPPORTED_ON_DEVICE;
++        }
++        if (mFingerprintManager != null &&
++            (!mFingerprintManager.isHardwareDetected() || !mFingerprintManager.hasEnrolledFingerprints())) {
++            return UNSUPPORTED_ON_DEVICE;
++        }
++        if (!mContext.getResources().getBoolean(
++                com.android.internal.R.bool.config_supportsScreenOffUdfps)){
++            return UNSUPPORTED_ON_DEVICE;
++        }
++        return AVAILABLE;
++    }
++}
+-- 
+2.37.2
+

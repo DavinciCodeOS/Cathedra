@@ -42,5 +42,11 @@
         "0024-Reland-Trigger-fewer-GCs-during-startup.patch",
         "0025-optimization-of-gc-load-reduce-gc-in-some-scenarios.patch",
         "0026-Fix-calculation-of-bytes-allocated-since-last-gc.patch"
+    ],
+    "packages/apps/Settings": [
+        "0027-Revert-Settings-Allow-user-configurable-fingerprint-.patch",
+        "0028-Revert-ScreenOffUdfpsPreferenceController-Adapt-to-o.patch",
+        "0029-Revert-Settings-gestures-Add-page-for-Screen-Off-UDF.patch",
+        "0030-Revert-Revert-Allow-toggling-screen-off-fod-2-2.patch"
     ]
 }

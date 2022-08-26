@@ -1,0 +1,142 @@
+From a6d3300ddaff157fa57fd41455cd93b79e563424 Mon Sep 17 00:00:00 2001
+From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
+Date: Thu, 25 Aug 2022 12:36:23 +0200
+Subject: [PATCH 1/1] Revert "Settings: Allow user configurable fingerprint
+ wake-and-unlock"
+
+This reverts commit 7de41da22a155f44e1e69589d89176eb7d3581db.
+
+Change-Id: I1e9cfcd16ab67f393bc4b0488ccfb1419b69a9d0
+---
+ res/values/custom_strings.xml                 |  5 --
+ res/xml/screen_lock_settings.xml              |  7 --
+ ...FingerprintUnlockPreferenceController.java | 70 -------------------
+ .../screenlock/ScreenLockSettings.java        |  1 -
+ 4 files changed, 83 deletions(-)
+ delete mode 100644 src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 4763767d8b..dc325a056b 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -118,11 +118,6 @@
+     <!-- Summary text for screen off UDFPS [CHAR LIMIT=NONE]-->
+     <string name="ambient_display_screen_off_udfps_summary">To wake up your screen and unlock, long press your under-display fingerprint sensor.</string>
+ 
+-    <!-- Fingerprint wake-and-unlock -->
+-    <string name="fingerprint_wake_unlock_title">Touch fingerprint to unlock</string>
+-    <string name="fingerprint_wake_unlock_touch">Listens for events while the screen is off</string>
+-    <string name="fingerprint_wake_unlock_press">Only listens for events once the screen is on</string>
+-
+     <!-- QS battery estimates -->
+     <string name="qs_show_battery_estimate_title">Battery estimates</string>
+     <string name="qs_show_battery_estimate_summary">Show estimated remaining battery life next to the icon. Needs SystemUI Restart</string>
+diff --git a/res/xml/screen_lock_settings.xml b/res/xml/screen_lock_settings.xml
+index 7cec8c2852..339cbf51e0 100644
+--- a/res/xml/screen_lock_settings.xml
++++ b/res/xml/screen_lock_settings.xml
+@@ -48,13 +48,6 @@
+         android:key="power_button_instantly_locks"
+         android:title="@string/lockpattern_settings_enable_power_button_instantly_locks" />
+ 
+-    <!-- Fingerprint wake-and-unlock toggle -->
+-    <SwitchPreference
+-        android:key="fingerprint_wake_unlock"
+-        android:title="@string/fingerprint_wake_unlock_title"
+-        android:summaryOn="@string/fingerprint_wake_unlock_touch"
+-        android:summaryOff="@string/fingerprint_wake_unlock_press" />
+-
+     <!-- Custom additions, available in pin/pattern/password/slide -->
+     <SwitchPreference
+         android:key="lockscreen_scramble_pin_layout"
+diff --git a/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java b/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java
+deleted file mode 100644
+index 9b0dcd7bc1..0000000000
+--- a/src/com/android/settings/security/screenlock/FingerprintUnlockPreferenceController.java
++++ /dev/null
+@@ -1,70 +0,0 @@
+-/*
+- * Copyright (C) 2022 The LineageOS Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package com.android.settings.security.screenlock;
+-
+-import android.content.Context;
+-import android.os.UserHandle;
+-import androidx.preference.Preference;
+-import androidx.preference.TwoStatePreference;
+-
+-import com.android.settings.core.PreferenceControllerMixin;
+-import com.android.settingslib.core.AbstractPreferenceController;
+-
+-import android.provider.Settings;
+-
+-public class FingerprintUnlockPreferenceController extends AbstractPreferenceController
+-        implements PreferenceControllerMixin, Preference.OnPreferenceChangeListener {
+-
+-    static final String KEY_FINGERPRINT_WAKE_UNLOCK = "fingerprint_wake_unlock";
+-
+-    public FingerprintUnlockPreferenceController(Context context) {
+-        super(context);
+-    }
+-
+-    private int getFingerprintSettings() {
+-        return Settings.System.getIntForUser(
+-                mContext.getContentResolver(),
+-                Settings.System.FINGERPRINT_WAKE_UNLOCK, 1,
+-                UserHandle.USER_CURRENT);
+-    }
+-
+-    @Override
+-    public boolean isAvailable() {
+-        // Enable it for just powerbutton fps devices
+-        // Disable for devices config_fingerprintWakeAndUnlock set to false.
+-        return getFingerprintSettings() != 2 && mContext.getResources().getBoolean(
+-                com.android.internal.R.bool.config_is_powerbutton_fps);
+-    }
+-
+-    @Override
+-    public String getPreferenceKey() {
+-        return KEY_FINGERPRINT_WAKE_UNLOCK;
+-    }
+-
+-    @Override
+-    public void updateState(Preference preference) {
+-        ((TwoStatePreference) preference).setChecked(getFingerprintSettings() == 1);
+-    }
+-
+-    @Override
+-    public boolean onPreferenceChange(Preference preference, Object newValue) {
+-        Settings.System.putIntForUser(mContext.getContentResolver(),
+-                Settings.System.FINGERPRINT_WAKE_UNLOCK,
+-                (Boolean) newValue ? 1 : 0, UserHandle.USER_CURRENT);
+-        return true;
+-    }
+-}
+diff --git a/src/com/android/settings/security/screenlock/ScreenLockSettings.java b/src/com/android/settings/security/screenlock/ScreenLockSettings.java
+index 4120bade66..a3e24af890 100644
+--- a/src/com/android/settings/security/screenlock/ScreenLockSettings.java
++++ b/src/com/android/settings/security/screenlock/ScreenLockSettings.java
+@@ -81,7 +81,6 @@ public class ScreenLockSettings extends DashboardFragment
+                 context, MY_USER_ID, lockPatternUtils));
+         controllers.add(new PinScramblePreferenceController(
+                 context, MY_USER_ID, lockPatternUtils));
+-        controllers.add(new FingerprintUnlockPreferenceController(context));
+         controllers.add(new OwnerInfoPreferenceController(context, parent));
+         return controllers;
+     }
+-- 
+2.37.2
+
