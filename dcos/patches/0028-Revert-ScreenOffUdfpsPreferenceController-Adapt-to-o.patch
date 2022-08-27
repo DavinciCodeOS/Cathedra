@@ -1,7 +1,7 @@
-From 1396b8fc0dd80c9f5ed0f863c7c40b088ae1891c Mon Sep 17 00:00:00 2001
+From c211ad03110aea6ecc6efb49f8d0ba8fdc49ce51 Mon Sep 17 00:00:00 2001
 From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
-Date: Thu, 25 Aug 2022 12:36:49 +0200
-Subject: [PATCH 1/1] Revert "ScreenOffUdfpsPreferenceController: Adapt to our
+Date: Fri, 26 Aug 2022 21:53:51 +0200
+Subject: [PATCH 2/4] Revert "ScreenOffUdfpsPreferenceController: Adapt to our
  usecase"
 
 This reverts commit 241cc12f4d6fab4909e0fd12292b32d71683d7ab.
@@ -11,7 +11,7 @@ This reverts commit 241cc12f4d6fab4909e0fd12292b32d71683d7ab.
  2 files changed, 15 insertions(+), 8 deletions(-)
 
 diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
-index dc325a056b..6c27b90012 100644
+index 5fe9d3f987..ff0d5b47f9 100644
 --- a/res/values/custom_strings.xml
 +++ b/res/values/custom_strings.xml
 @@ -113,8 +113,12 @@

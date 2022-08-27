@@ -1,37 +1,34 @@
-From 683937e14c062e6cd531c9c5aa6fc611491d10f5 Mon Sep 17 00:00:00 2001
+From 2632f97270cbe0027a1526fcc762e3fb6a656d04 Mon Sep 17 00:00:00 2001
 From: Diniboy1123 <Diniboy1123@users.noreply.github.com>
-Date: Thu, 25 Aug 2022 12:39:54 +0200
-Subject: [PATCH 1/1] Revert "Revert "Allow toggling screen off fod [2/2]""
+Date: Fri, 26 Aug 2022 21:54:25 +0200
+Subject: [PATCH 4/4] Revert "Revert "Allow toggling screen off fod [2/2]""
 
 This reverts commit 80c530f6b4b07a5545d9a52e760a191f6d4d522f.
-
-Change-Id: I3791801786ab04d0f3111bb04dc3569f288ee66e
 ---
- res/values/custom_strings.xml                 |  5 ++
+ res/values/custom_strings.xml                 |  4 ++
  res/xml/display_settings.xml                  |  8 +++
  .../UdfpsGesturePreferenceController.java     | 68 +++++++++++++++++++
- 3 files changed, 81 insertions(+)
+ 3 files changed, 80 insertions(+)
  create mode 100644 src/com/android/settings/security/UdfpsGesturePreferenceController.java
 
 diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
-index 42ce492079..b1dde5cee1 100644
+index 9886f464be..f462e7e329 100644
 --- a/res/values/custom_strings.xml
 +++ b/res/values/custom_strings.xml
-@@ -139,4 +139,9 @@
-     <!-- Pocket judge -->
-     <string name="pocket_judge_title">Pocket detection</string>
-     <string name="pocket_judge_summary">Block screen and button inputs when device is in pocket</string>
-+
+@@ -113,4 +113,8 @@
+     <string name="high_touch_polling_rate_title">High touch polling rate</string>
+     <string name="high_touch_polling_rate_summary">Increase touchscreen polling rate</string>
+ 
 +    <!-- Screen off FOD -->
 +    <string name="screen_off_fod_title">Screen off FOD</string>
 +    <string name="screen_off_fod_summary">Keep FOD enabled when the screen is off</string>
 +
  </resources>
 diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
-index 712c310205..9bbdef36df 100644
+index 354348c9dd..10b5092997 100644
 --- a/res/xml/display_settings.xml
 +++ b/res/xml/display_settings.xml
-@@ -221,6 +221,14 @@
+@@ -210,6 +210,14 @@
              android:key="vr_display_pref"
              android:title="@string/display_vr_pref_title" />
  
